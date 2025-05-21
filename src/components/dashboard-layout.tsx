@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,13 +14,15 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings } from "lucide-react"
+import { LogOut, Settings, Flame } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useDailyStreak } from "@/hooks/useDailyStreak";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Get current year for footer
   const [currentYear, setCurrentYear] = React.useState<number | null>(null);
+  const { streak, isLoadingStreak } = useDailyStreak();
+
   React.useEffect(() => {
     setCurrentYear(new Date().getFullYear());
   }, []);
@@ -52,6 +55,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
           <div className="mt-4 text-xs text-muted-foreground text-center">
+            {isLoadingStreak ? (
+              <span className="text-xs">Loading streak...</span>
+            ) : streak > 0 ? (
+              <div className="flex items-center justify-center gap-1.5 mb-2 text-sm">
+                <Flame className="h-4 w-4 text-orange-500" />
+                <span>{streak} Day Streak!</span>
+              </div>
+            ) : null}
             {currentYear !== null ? `© ${currentYear} Taskify Pro` : 'Loading year...'}
           </div>
         </SidebarFooter>
