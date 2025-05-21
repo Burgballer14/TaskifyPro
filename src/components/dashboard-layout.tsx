@@ -14,18 +14,53 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, Flame } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { LogOut, Settings, Flame, Sun, Moon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useDailyStreak } from "@/hooks/useDailyStreak";
+import { Label } from "@/components/ui/label"
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [currentYear, setCurrentYear] = React.useState<number | null>(null);
   const { streak, isLoadingStreak } = useDailyStreak();
+  const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
 
   React.useEffect(() => {
     setCurrentYear(new Date().getFullYear());
+    const storedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (storedTheme) {
+      setTheme(storedTheme);
+      if (storedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else {
+       // Respect OS preference if no theme is stored
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setTheme('dark');
+        document.documentElement.classList.add('dark');
+      } else {
+        setTheme('light');
+        document.documentElement.classList.remove('dark');
+      }
+    }
   }, []);
+
+  React.useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
 
 
   return (
@@ -70,7 +105,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
            <SidebarTrigger className="md:hidden" /> {/* Mobile toggle */}
-           <div className="flex items-center gap-2 ml-auto">
+           <div className="flex items-center gap-4 ml-auto"> {/* Increased gap */}
+            <div className="flex items-center gap-2">
+              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <Label htmlFor="theme-switch" className="sr-only">
+                Toggle theme
+              </Label>
+              <Switch
+                id="theme-switch"
+                checked={theme === 'dark'}
+                onCheckedChange={toggleTheme}
+                aria-label="Toggle theme"
+              />
+            </div>
             <Avatar className="h-8 w-8">
               <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person avatar" />
               <AvatarFallback>TP</AvatarFallback>
