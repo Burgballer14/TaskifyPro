@@ -4,15 +4,17 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Paintbrush, Sparkles, CheckCircle2, Dog, PawPrint } from "lucide-react";
+import { Paintbrush, Sparkles, CheckCircle2, Dog, PawPrint, Wallet } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 const SUNSET_THEME_KEY = 'taskifyProSunsetThemeUnlocked';
 const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
+const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance';
 
-const SUNSET_THEME_COST = 100; // Mock cost
-const DOGGO_PET_COST = 200; // Mock cost
+const INITIAL_USER_POINTS = 500;
+const SUNSET_THEME_COST = 100;
+const DOGGO_PET_COST = 200;
 
 type Pet = 'doggo' | null;
 
@@ -20,6 +22,7 @@ export function ThemeUnlockCard() {
   const [isSunsetUnlocked, setIsSunsetUnlocked] = useState(false);
   const [isDoggoUnlocked, setIsDoggoUnlocked] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet>(null);
+  const [userPoints, setUserPoints] = useState(INITIAL_USER_POINTS);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -33,34 +36,69 @@ export function ThemeUnlockCard() {
 
       const storedSelectedPet = localStorage.getItem(SELECTED_PET_KEY) as Pet | null;
       setSelectedPet(storedSelectedPet);
+
+      const storedUserPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
+      if (storedUserPoints !== null) {
+        setUserPoints(parseInt(storedUserPoints, 10));
+      } else {
+        localStorage.setItem(USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS.toString());
+        setUserPoints(INITIAL_USER_POINTS);
+      }
     }
     setIsLoading(false);
   }, []);
 
   const handleUnlockTheme = () => {
+    if (userPoints < SUNSET_THEME_COST) {
+      toast({
+        title: "Not Enough Points!",
+        description: `Sunset Glow theme costs ${SUNSET_THEME_COST} points. You have ${userPoints}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newPoints = userPoints - SUNSET_THEME_COST;
+    localStorage.setItem(USER_POINTS_BALANCE_KEY, newPoints.toString());
+    setUserPoints(newPoints);
+    
     localStorage.setItem(SUNSET_THEME_KEY, 'true');
     setIsSunsetUnlocked(true);
     toast({
       title: "Theme Unlocked!",
-      description: "You can now select the 'Sunset Glow' theme in the header.",
+      description: `Sunset Glow theme is now available. Cost: ${SUNSET_THEME_COST} points.`,
       variant: "default",
     });
-    // Dispatch a storage event to notify other components like DashboardLayout
     window.dispatchEvent(new StorageEvent('storage', { key: SUNSET_THEME_KEY, newValue: 'true' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
   };
 
   const handleUnlockDoggo = () => {
+    if (userPoints < DOGGO_PET_COST) {
+      toast({
+        title: "Not Enough Points!",
+        description: `Doggo pet costs ${DOGGO_PET_COST} points. You have ${userPoints}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newPoints = userPoints - DOGGO_PET_COST;
+    localStorage.setItem(USER_POINTS_BALANCE_KEY, newPoints.toString());
+    setUserPoints(newPoints);
+
     localStorage.setItem(DOGGO_PET_UNLOCKED_KEY, 'true');
     setIsDoggoUnlocked(true);
-    localStorage.setItem(SELECTED_PET_KEY, 'doggo');
+    localStorage.setItem(SELECTED_PET_KEY, 'doggo'); // Auto-select new pet
     setSelectedPet('doggo');
     toast({
       title: "Pet Unlocked!",
-      description: "Doggo is now your companion and will appear in the sidebar!",
+      description: `Doggo is now your companion! Cost: ${DOGGO_PET_COST} points.`,
       variant: "default",
     });
     window.dispatchEvent(new StorageEvent('storage', { key: DOGGO_PET_UNLOCKED_KEY, newValue: 'true' }));
     window.dispatchEvent(new StorageEvent('storage', { key: SELECTED_PET_KEY, newValue: 'doggo' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
   };
 
   const handleSelectDoggo = () => {
@@ -79,10 +117,10 @@ export function ThemeUnlockCard() {
     return (
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">Store</CardTitle>
+          <CardTitle className="text-xl font-semibold">Personalization Store</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Loading items...</p>
+          <p className="text-muted-foreground">Loading items and points...</p>
         </CardContent>
       </Card>
     );
@@ -96,10 +134,13 @@ export function ThemeUnlockCard() {
             <Paintbrush className="h-7 w-7 text-accent" />
             <CardTitle className="text-xl font-semibold">Personalization Store</CardTitle>
           </div>
-          <Sparkles className="h-6 w-6 text-yellow-400" />
+          <div className="flex items-center gap-2 text-lg font-medium text-primary">
+            <Wallet className="h-6 w-6"/>
+            <span>{userPoints} Points</span>
+          </div>
         </div>
         <CardDescription className="text-sm text-muted-foreground pt-1">
-          Unlock new themes and companions to personalize your dashboard!
+          Spend your points to unlock new themes and companions!
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -108,7 +149,7 @@ export function ThemeUnlockCard() {
           <div>
             <h4 className="text-lg font-medium text-foreground">Sunset Glow Theme</h4>
             <p className="text-sm text-muted-foreground">
-              A warm and vibrant theme inspired by beautiful sunsets.
+              A warm and vibrant theme inspired by beautiful sunsets. (Cost: {SUNSET_THEME_COST} Points)
             </p>
           </div>
           {isSunsetUnlocked ? (
@@ -117,7 +158,11 @@ export function ThemeUnlockCard() {
               <span>Unlocked!</span>
             </div>
           ) : (
-            <Button onClick={handleUnlockTheme} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button 
+              onClick={handleUnlockTheme} 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              disabled={userPoints < SUNSET_THEME_COST}
+            >
               Unlock for {SUNSET_THEME_COST} Points
             </Button>
           )}
@@ -135,7 +180,7 @@ export function ThemeUnlockCard() {
               <div>
                 <h4 className="text-lg font-medium text-foreground">Doggo the Friendly Pup</h4>
                 <p className="text-sm text-muted-foreground">
-                  Your loyal coding companion! Ready to cheer you on.
+                  Your loyal coding companion! (Cost: {DOGGO_PET_COST} Points)
                 </p>
               </div>
             </div>
@@ -151,7 +196,11 @@ export function ThemeUnlockCard() {
                 </Button>
               )
             ) : (
-              <Button onClick={handleUnlockDoggo} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button 
+                onClick={handleUnlockDoggo} 
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={userPoints < DOGGO_PET_COST}
+              >
                 Unlock for {DOGGO_PET_COST} Points
               </Button>
             )}
@@ -159,7 +208,7 @@ export function ThemeUnlockCard() {
         </div>
         
         <p className="text-xs text-muted-foreground text-center pt-4">
-          (Point deduction and more items coming soon!)
+          Earn more points by completing tasks! More items coming soon!
         </p>
       </CardContent>
     </Card>
