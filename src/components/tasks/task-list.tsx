@@ -168,7 +168,7 @@ export function TaskList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24"> {/* Added pb-24 here */}
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-grow w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -242,3 +242,4 @@ export function TaskList() {
     </div>
   );
 }
+
