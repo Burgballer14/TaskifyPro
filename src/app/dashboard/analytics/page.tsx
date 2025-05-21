@@ -4,12 +4,14 @@ import { PageHeader } from '@/components/page-header';
 import { DUMMY_TASKS } from '@/lib/constants';
 import type { Task } from '@/types';
 import { generateDailySummary, type DailySummaryInput, type DailySummaryOutput } from '@/ai/flows/daily-summary-flow';
-import { isSameDay, startOfToday } from 'date-fns';
+import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 function isDateToday(date: Date | undefined): boolean {
   if (!date) return false;
   return isSameDay(date, startOfToday());
 }
+
+const WEEKLY_POINT_GOAL = 150; // Hardcoded weekly goal
 
 export default async function AnalyticsPage() {
   const userName = "User"; // Hardcoded for now
@@ -23,6 +25,20 @@ export default async function AnalyticsPage() {
   );
 
   const dailyScore = tasksCompletedToday.reduce((sum, task) => sum + (task.points || 0), 0);
+
+  // Calculate weekly progress
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+
+  const tasksCompletedThisWeek = DUMMY_TASKS.filter(
+    (task) =>
+      task.status === 'completed' &&
+      task.completedAt &&
+      isWithinInterval(task.completedAt, { start: weekStart, end: weekEnd })
+  );
+  const pointsThisWeek = tasksCompletedThisWeek.reduce((sum, task) => sum + (task.points || 0), 0);
+
 
   const summaryInput: DailySummaryInput = {
     userName,
@@ -52,8 +68,9 @@ export default async function AnalyticsPage() {
         userName={userName}
         summaryOutput={summaryOutput}
         dailyScore={dailyScore}
+        pointsThisWeek={pointsThisWeek}
+        weeklyPointGoal={WEEKLY_POINT_GOAL}
       />
     </>
   );
 }
-
