@@ -13,11 +13,6 @@ import { Loader2 } from 'lucide-react';
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, checkAndUnlockPointCollectorAchievement } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
 
-function isDateToday(date: Date | undefined): boolean {
-  if (!date) return false;
-  return isSameDay(date, startOfToday());
-}
-
 const WEEKLY_POINT_GOAL = 1050; 
 const DAILY_POINT_CAP = 150;   
 
@@ -26,9 +21,9 @@ export default function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [summaryOutput, setSummaryOutput] = useState<DailySummaryOutput>({
     personalizedSummary: "Loading your personalized summary...",
-    dailyScoreBlurb: "Daily Score",
+    dailyScoreBlurb: "Loading...", // Initial loading state
   });
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsData, setAnalyticsData] = useState<any>(null); // Initialize as null
   const { toast } = useToast();
 
   const unlockAchievement = (achievementId: string, achievementTitle: string, pointsToAward: number, stageNumber?: number, stageTitleSuffix?: string) => {
@@ -70,8 +65,7 @@ export default function AnalyticsPage() {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
-        // After awarding points for this achievement, check Point Collector
-        checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement); // Pass this page's unlockAchievement
+        checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
       }
 
       const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
@@ -90,21 +84,13 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !tasks.length) { 
-      if (!isLoading && !tasks.length) { 
-        setAnalyticsData({
-          userName: "User",
-          dailyScore: 0,
-          pointsThisWeek: 0,
-          totalActiveTasks: 0,
-          tasksCompletedThisWeekCount: 0,
-          overdueTasksCount: 0,
-        });
-        setSummaryOutput({
-            personalizedSummary: `Welcome, User! Ready to start your day? Add some tasks!`,
-            dailyScoreBlurb: "Today's Score",
-        });
-      }
+    if (isLoading) {
+      // Set initial loading states for summary and analytics data
+      setSummaryOutput({
+        personalizedSummary: "Loading your personalized summary...",
+        dailyScoreBlurb: "Loading...",
+      });
+      setAnalyticsData(null); // Indicate data is not ready
       return;
     }
 
@@ -160,9 +146,6 @@ export default function AnalyticsPage() {
       overdueTasksCount,
     });
 
-    // Removed specific "point_collector" check based on pointsThisWeek,
-    // as it's now based on total lifetime points and checked elsewhere.
-
     const summaryInput: DailySummaryInput = {
       userName,
       tasksCompletedToday: tasksCompletedTodayList.length,
@@ -174,12 +157,12 @@ export default function AnalyticsPage() {
       .catch(error => {
         console.error("Error fetching daily summary:", error);
         setSummaryOutput({
-          personalizedSummary: `Welcome, ${userName}! Have a productive day and remember to check your tasks.`,
+          personalizedSummary: `Welcome, ${userName}! Have a productive day. (AI fallback)`,
           dailyScoreBlurb: "Today's Score",
         });
       });
 
-  }, [tasks, isLoading, toast]); // Removed 'unlockAchievement' from deps as it's stable unless its definition changes
+  }, [tasks, isLoading, toast]);
 
   if (isLoading || !analyticsData) {
     return (
