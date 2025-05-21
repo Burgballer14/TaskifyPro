@@ -35,20 +35,20 @@ export default function AchievementsPage() {
     setIsLoading(false);
   }, []);
   
-  // Function to manually trigger an update (for testing, or if other parts of app update localStorage)
-  // useEffect(() => {
-  //   const handleStorageChange = (event: StorageEvent) => {
-  //     if (event.key === ACHIEVEMENTS_STORAGE_KEY && event.newValue) {
-  //       try {
-  //         setUnlockedAchievements(JSON.parse(event.newValue));
-  //       } catch (e) {
-  //         console.error("Error parsing achievements from storage event", e);
-  //       }
-  //     }
-  //   };
-  //   window.addEventListener('storage', handleStorageChange);
-  //   return () => window.removeEventListener('storage', handleStorageChange);
-  // }, []);
+  // Listen for storage changes to update UI dynamically if an achievement is unlocked elsewhere
+   useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === ACHIEVEMENTS_STORAGE_KEY && event.newValue) {
+        try {
+          setUnlockedAchievements(JSON.parse(event.newValue));
+        } catch (e) {
+          console.error("Error parsing achievements from storage event", e);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
 
   if (isLoading) {

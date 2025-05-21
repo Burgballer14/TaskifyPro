@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { isSameDay, subDays, startOfDay } from 'date-fns';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data'; // Import achievement constants
 
 const LAST_LOGIN_KEY = 'taskifyProLastLogin';
 const STREAK_COUNT_KEY = 'taskifyProStreakCount';
@@ -10,9 +12,25 @@ const STREAK_COUNT_KEY = 'taskifyProStreakCount';
 export function useDailyStreak() {
   const [streak, setStreak] = useState(0);
   const [isLoadingStreak, setIsLoadingStreak] = useState(true);
+  const { toast } = useToast(); // Initialize toast
+
+  const unlockAchievement = (achievementId: string, achievementTitle: string) => {
+    if (typeof window === 'undefined') return; // Guard against SSR
+    const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
+      achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
+      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+      toast({
+        title: "🏆 Achievement Unlocked!",
+        description: achievementTitle,
+        variant: "default",
+      });
+    }
+  };
 
   useEffect(() => {
-    // Ensure this code only runs on the client
     if (typeof window !== 'undefined') {
       const today = startOfDay(new Date());
       const lastLoginDateStr = localStorage.getItem(LAST_LOGIN_KEY);
@@ -25,26 +43,27 @@ export function useDailyStreak() {
         const previousStreak = parseInt(currentStreakStr || '0', 10);
 
         if (isSameDay(lastLoginDate, subDays(today, 1))) {
-          // Logged in yesterday, continue streak
           updatedStreak = previousStreak + 1;
         } else if (isSameDay(lastLoginDate, today)) {
-          // Logged in today already, streak remains the same
-          updatedStreak = previousStreak > 0 ? previousStreak : 1; // Ensure streak is at least 1 if logged in today
+          updatedStreak = previousStreak > 0 ? previousStreak : 1; 
         } else {
-          // Missed a day or more, or date is in future (should not happen)
-          updatedStreak = 1; // Reset to 1 for today's login
+          updatedStreak = 1; 
         }
       } else {
-        // First login or localStorage cleared
         updatedStreak = 1;
       }
 
       localStorage.setItem(LAST_LOGIN_KEY, today.toISOString());
       localStorage.setItem(STREAK_COUNT_KEY, updatedStreak.toString());
       setStreak(updatedStreak);
+
+      // Check for "Consistent Starter" achievement
+      if (updatedStreak >= 3) {
+        unlockAchievement('streak_beginner', 'Consistent Starter');
+      }
     }
     setIsLoadingStreak(false);
-  }, []);
+  }, []); // Removed toast from dependencies as unlockAchievement has its own instance
 
   return { streak, isLoadingStreak };
 }

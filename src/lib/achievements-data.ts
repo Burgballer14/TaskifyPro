@@ -1,6 +1,6 @@
 
 import type { Achievement } from '@/types';
-import { Award, Palette, Flame, Trophy, Zap, Star } from 'lucide-react';
+import { Award, Palette, Flame, Trophy, Zap, Star, PawPrint } from 'lucide-react';
 
 export const ACHIEVEMENTS_LIST: Achievement[] = [
   {
@@ -21,14 +21,14 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
     id: 'pet_pal',
     title: 'Furry Friend',
     description: 'Unlock your first pet companion.',
-    icon: Flame, // Using Flame for Doggo as per previous context, can be PawPrint too
+    icon: PawPrint, // Changed to PawPrint for pet-specific
     category: 'store',
   },
   {
     id: 'streak_beginner',
     title: 'Consistent Starter',
     description: 'Achieve a 3-day login streak.',
-    icon: Zap, // Using Zap for streak, could be Flame too
+    icon: Flame, // Using Flame for streak consistency
     category: 'streak',
   },
   {

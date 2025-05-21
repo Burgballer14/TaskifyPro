@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Paintbrush, Sparkles, CheckCircle2, Dog, PawPrint, Wallet } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data'; // Import achievement constants
 
 const SUNSET_THEME_KEY = 'taskifyProSunsetThemeUnlocked';
 const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
 const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance';
 
-const INITIAL_USER_POINTS = 500; // Initial points if none are found
+const INITIAL_USER_POINTS = 500; 
 const SUNSET_THEME_COST = 500; 
 const DOGGO_PET_COST = 500;    
 
@@ -48,6 +49,21 @@ export function ThemeUnlockCard() {
     setIsLoading(false);
   }, []);
 
+  const unlockAchievement = (achievementId: string, achievementTitle: string) => {
+    const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
+      achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
+      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+      toast({
+        title: "🏆 Achievement Unlocked!",
+        description: achievementTitle,
+        variant: "default",
+      });
+    }
+  };
+
   const handleUnlockTheme = () => {
     if (userPoints < SUNSET_THEME_COST) {
       toast({
@@ -71,6 +87,8 @@ export function ThemeUnlockCard() {
     });
     window.dispatchEvent(new StorageEvent('storage', { key: SUNSET_THEME_KEY, newValue: 'true' }));
     window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
+    
+    unlockAchievement('style_starter', 'A Splash of Color');
   };
 
   const handleUnlockDoggo = () => {
@@ -89,7 +107,7 @@ export function ThemeUnlockCard() {
 
     localStorage.setItem(DOGGO_PET_UNLOCKED_KEY, 'true');
     setIsDoggoUnlocked(true);
-    localStorage.setItem(SELECTED_PET_KEY, 'doggo'); // Auto-select new pet
+    localStorage.setItem(SELECTED_PET_KEY, 'doggo'); 
     setSelectedPet('doggo');
     toast({
       title: "Pet Unlocked!",
@@ -99,6 +117,8 @@ export function ThemeUnlockCard() {
     window.dispatchEvent(new StorageEvent('storage', { key: DOGGO_PET_UNLOCKED_KEY, newValue: 'true' }));
     window.dispatchEvent(new StorageEvent('storage', { key: SELECTED_PET_KEY, newValue: 'doggo' }));
     window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
+
+    unlockAchievement('pet_pal', 'Furry Friend');
   };
 
   const handleSelectDoggo = () => {
@@ -144,7 +164,6 @@ export function ThemeUnlockCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Theme Section */}
         <div className="p-4 rounded-lg bg-card border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h4 className="text-lg font-medium text-foreground">Sunset Glow Theme</h4>
@@ -168,7 +187,6 @@ export function ThemeUnlockCard() {
           )}
         </div>
 
-        {/* Pet Companion Section */}
         <div className="mt-6 pt-6 border-t border-border/50">
           <div className="flex items-center gap-3 mb-4">
             <PawPrint className="h-7 w-7 text-accent" />

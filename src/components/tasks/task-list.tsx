@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
 import { PlusCircle, Search, Pencil } from 'lucide-react';
+import { ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data'; // Import achievement constants
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -39,9 +41,10 @@ export function TaskList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false); // Renamed from isNewTaskDialogOpen
-  const [editingTask, setEditingTask] = useState<Task | null>(null); // For storing task to edit
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const { toast } = useToast(); // Initialize toast
 
   useEffect(() => {
     setIsMounted(true);
@@ -112,6 +115,22 @@ export function TaskList() {
     setEditingTask(null);
   };
 
+  const unlockAchievement = (achievementId: string, achievementTitle: string) => {
+    const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
+      achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
+      // Dispatch a storage event so other components (like AchievementsPage) can react if they are open
+      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+      toast({
+        title: "🏆 Achievement Unlocked!",
+        description: achievementTitle,
+        variant: "default",
+      });
+    }
+  };
+
   const handleCreateTask = (data: TaskFormData) => {
     const newTask: Task = {
       id: Date.now().toString(),
@@ -136,18 +155,16 @@ export function TaskList() {
           ? { 
               ...task, 
               ...data, 
-              points: assignPoints(data.priority), // Recalculate points if priority changed
-              // Retain original createdAt, completedAt if not part of TaskFormData
+              points: assignPoints(data.priority), 
               createdAt: task.createdAt, 
               completedAt: task.completedAt,
-              status: task.status // status is not part of TaskFormData, keep existing
+              status: task.status 
             }
           : task
       )
     );
     handleCloseDialog();
   };
-
 
   const handleCompleteTask = (taskId: string) => {
     setTasks(prevTasks =>
@@ -157,6 +174,8 @@ export function TaskList() {
           : task
       )
     );
+    // Check for "First Task Completed" achievement
+    unlockAchievement('first_task_completed', 'First Step Taken');
   };
   
   if (!isMounted) {
@@ -168,7 +187,7 @@ export function TaskList() {
   }
 
   return (
-    <div className="space-y-6 pb-24"> {/* Added pb-24 here */}
+    <div className="space-y-6 pb-24">
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-grow w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -229,7 +248,7 @@ export function TaskList() {
               key={task.id} 
               task={task} 
               onCompleteTask={handleCompleteTask} 
-              onEditTask={handleOpenEditDialog} // Pass edit handler
+              onEditTask={handleOpenEditDialog}
             />
           ))}
         </div>
@@ -242,4 +261,3 @@ export function TaskList() {
     </div>
   );
 }
-
