@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Task } from '@/types';
@@ -6,16 +7,39 @@ import { useState, useMemo } from 'react';
 import { DUMMY_TASKS } from '@/lib/constants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { NewTaskForm, type TaskFormData } from './new-task-form';
+import { PlusCircle, Search } from 'lucide-react';
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
+
+const assignPoints = (priority: Task['priority']): number => {
+  switch (priority) {
+    case 'high':
+      return 30;
+    case 'medium':
+      return 20;
+    case 'low':
+      return 10;
+    default:
+      return 0;
+  }
+};
 
 export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>(DUMMY_TASKS);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
 
   const priorityOrder: Record<Task['priority'], number> = { high: 0, medium: 1, low: 2 };
   const statusOrder: Record<Task['status'], number> = { todo: 0, inProgress: 1, completed: 2 };
@@ -23,8 +47,8 @@ export function TaskList() {
   const filteredAndSortedTasks = useMemo(() => {
     let filtered = tasks.filter(task => 
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.category.toLowerCase().includes(searchTerm.toLowerCase())
+      (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (task.category && task.category.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return filtered.sort((a, b) => {
@@ -57,10 +81,26 @@ export function TaskList() {
     setSortOrder(order);
   };
 
+  const handleCreateTask = (data: TaskFormData) => {
+    const newTask: Task = {
+      id: Date.now().toString(), // Simple ID generation
+      title: data.title,
+      description: data.description || '',
+      dueDate: data.dueDate,
+      priority: data.priority,
+      status: 'todo',
+      category: data.category || 'General',
+      createdAt: new Date(),
+      points: assignPoints(data.priority),
+    };
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+    setIsNewTaskDialogOpen(false);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-grow">
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="relative flex-grow w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
             placeholder="Search tasks..."
@@ -78,12 +118,29 @@ export function TaskList() {
             <SelectItem value="dueDate-desc">Due Date (Desc)</SelectItem>
             <SelectItem value="priority-asc">Priority (Low to High)</SelectItem>
             <SelectItem value="priority-desc">Priority (High to Low)</SelectItem>
-            <SelectItem value="status-asc">Status (A-Z)</SelectItem>
-            <SelectItem value="status-desc">Status (Z-A)</SelectItem>
+            <SelectItem value="status-asc">Status (To Do first)</SelectItem>
+            <SelectItem value="status-desc">Status (Completed first)</SelectItem>
             <SelectItem value="title-asc">Title (A-Z)</SelectItem>
             <SelectItem value="title-desc">Title (Z-A)</SelectItem>
           </SelectContent>
         </Select>
+        <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Create Task
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Create New Task</DialogTitle>
+            </DialogHeader>
+            <NewTaskForm 
+              onSubmit={handleCreateTask} 
+              onDialogClose={() => setIsNewTaskDialogOpen(false)} 
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {filteredAndSortedTasks.length > 0 ? (
