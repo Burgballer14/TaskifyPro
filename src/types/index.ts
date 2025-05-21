@@ -12,6 +12,7 @@ export interface Task {
   createdAt: Date;
   completedAt?: Date;
   points?: number;
+  recurrence?: 'none' | 'daily' | 'weekly'; // New field for recurrence
 }
 
 export interface AchievementStage {

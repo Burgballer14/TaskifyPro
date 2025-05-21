@@ -18,7 +18,7 @@ import { NewTaskForm, type TaskFormData } from './new-task-form';
 import { PlusCircle, Search } from 'lucide-react';
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, COMPLETED_TASKS_COUNT_KEY, checkAndUnlockPointCollectorAchievement } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
-import { isAfter, endOfDay } from 'date-fns';
+import { isAfter, endOfDay, addDays, startOfDay } from 'date-fns'; // Added addDays, startOfDay
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -54,7 +54,6 @@ export function TaskList() {
       if (storedPoints === null) {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS.toString());
       }
-      // Initial check for point collector achievement on load
       const currentTotalPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
       checkAndUnlockPointCollectorAchievement(currentTotalPoints, unlockAchievement);
     }
@@ -70,7 +69,7 @@ export function TaskList() {
   const statusOrder: Record<Task['status'], number> = { todo: 0, inProgress: 1, completed: 2 };
 
   const filteredAndSortedTasks = useMemo(() => {
-    let filtered = tasks.filter(task => 
+    let filtered = tasks.filter(task =>
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (task.category && task.category.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -87,13 +86,13 @@ export function TaskList() {
         valA = statusOrder[a.status];
         valB = statusOrder[b.status];
       } else if (sortKey === 'dueDate') {
-        valA = new Date(a.dueDate).getTime(); 
+        valA = new Date(a.dueDate).getTime();
         valB = new Date(b.dueDate).getTime();
-      } else { 
+      } else {
         valA = a.title.toLowerCase();
         valB = b.title.toLowerCase();
       }
-      
+
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -128,22 +127,22 @@ export function TaskList() {
     if (typeof window === 'undefined') return;
     const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
-    
+
     const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
     if (!achievement) return;
 
     const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
     let newStageUnlocked = false;
 
-    if (achievement.stages && stageNumber !== undefined) { 
+    if (achievement.stages && stageNumber !== undefined) {
       if (!currentStatus.currentStage || currentStatus.currentStage < stageNumber) {
         currentStatus.currentStage = stageNumber;
         if (!currentStatus.stageUnlockDates) currentStatus.stageUnlockDates = {};
         currentStatus.stageUnlockDates[stageNumber] = new Date().toISOString();
-        currentStatus.unlockDate = new Date().toISOString(); 
+        currentStatus.unlockDate = new Date().toISOString();
         newStageUnlocked = true;
       }
-    } else { 
+    } else {
       if (!currentStatus.unlocked) {
         currentStatus.unlocked = true;
         currentStatus.unlockDate = new Date().toISOString();
@@ -163,10 +162,9 @@ export function TaskList() {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
-        // Check for Point Collector achievement after awarding points
         checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
       }
-      
+
       const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
       toast({
         title: `🏆 Achievement ${achievement.stages ? 'Stage ' : ''}Unlocked!`,
@@ -181,12 +179,13 @@ export function TaskList() {
       id: Date.now().toString(),
       title: data.title,
       description: data.description || '',
-      dueDate: data.dueDate,
+      dueDate: startOfDay(data.dueDate), // Ensure due date is start of day
       priority: data.priority,
       status: 'todo',
       category: data.category || 'General',
       createdAt: new Date(),
       points: assignPoints(data.priority),
+      recurrence: data.recurrence || 'none',
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
     handleCloseDialog();
@@ -197,13 +196,16 @@ export function TaskList() {
     setTasks(prevTasks =>
       prevTasks.map(task =>
         task.id === editingTask.id
-          ? { 
-              ...task, 
-              ...data, 
-              points: assignPoints(data.priority), 
-              createdAt: task.createdAt, 
+          ? {
+              ...task,
+              ...data,
+              dueDate: startOfDay(data.dueDate), // Ensure due date is start of day on edit
+              points: assignPoints(data.priority),
+              // Keep original createdAt, completedAt, status unless explicitly changed by completion logic
+              createdAt: task.createdAt,
               completedAt: task.completedAt,
-              status: task.status 
+              status: task.status,
+              recurrence: data.recurrence || task.recurrence || 'none',
             }
           : task
       )
@@ -212,77 +214,122 @@ export function TaskList() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    const tasksBeforeUpdate = [...tasks];
-    const updatedTasks = tasksBeforeUpdate.map(task =>
-      task.id === taskId && task.status !== 'completed'
-        ? { ...task, status: 'completed' as const, completedAt: new Date() }
-        : task
-    );
-    
-    const taskJustCompleted = updatedTasks.find(t => t.id === taskId);
+    const taskToComplete = tasks.find(t => t.id === taskId);
+    if (!taskToComplete) return; // Task not found
+    // If task is already 'completed' and not recurring, do nothing to prevent re-awarding points.
+    if (taskToComplete.status === 'completed' && (!taskToComplete.recurrence || taskToComplete.recurrence === 'none')) return;
 
-    if (taskJustCompleted && tasksBeforeUpdate.find(t => t.id === taskId)?.status !== 'completed') {
-      setTasks(updatedTasks); 
-      
-      let awardedTaskPoints = 0;
-      let taskCompletedOnTime = false;
 
-      if (taskJustCompleted.points && taskJustCompleted.completedAt) {
-        const dueDate = new Date(taskJustCompleted.dueDate);
-        const completedAt = new Date(taskJustCompleted.completedAt);
-        taskCompletedOnTime = !isAfter(completedAt, endOfDay(dueDate));
+    let awardedTaskPoints = 0;
+    const completionDate = new Date();
+    const taskDueDate = startOfDay(new Date(taskToComplete.dueDate)); // Normalize due date
+    const taskCompletedOnTime = !isAfter(startOfDay(completionDate), taskDueDate);
 
-        if (taskCompletedOnTime) {
-          awardedTaskPoints = taskJustCompleted.points;
-          const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
-          const newTotalPoints = currentPoints + awardedTaskPoints;
-          localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
-          window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
-          
-          toast({
-            title: "👍 Task Complete!",
-            description: `You earned ${awardedTaskPoints} points.`,
-            variant: "default"
-          });
-          // Check for Point Collector achievement after awarding task points
-          checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
-        } else {
-          toast({
-            title: "👍 Task Complete!",
-            description: "Completed late, no points awarded for this task.",
-            variant: "default"
-          });
-        }
+
+    if (taskToComplete.points && taskCompletedOnTime) {
+        awardedTaskPoints = taskToComplete.points;
+    }
+
+    let updatedTasks;
+    let toastMessage = "";
+
+    if (taskToComplete.recurrence === 'daily') {
+      let nextDueDate = addDays(taskDueDate, 1);
+      // Ensure next due date is not in the past relative to today
+      if (isAfter(startOfDay(new Date()), nextDueDate)) {
+        nextDueDate = addDays(startOfDay(new Date()),1);
       }
-
-      const totalCompletedTasksNow = updatedTasks.filter(task => task.status === 'completed').length;
-      localStorage.setItem(COMPLETED_TASKS_COUNT_KEY, totalCompletedTasksNow.toString());
-      window.dispatchEvent(new StorageEvent('storage', {key: COMPLETED_TASKS_COUNT_KEY, newValue: totalCompletedTasksNow.toString()}));
-
-      const firstTaskAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'first_task_completed');
-      if (firstTaskAchievement) {
-         unlockAchievement(firstTaskAchievement.id, firstTaskAchievement.title, firstTaskAchievement.rewardPoints || 0);
+      updatedTasks = tasks.map(task =>
+        task.id === taskId
+          ? {
+              ...task,
+              dueDate: nextDueDate,
+              status: 'todo' as const,
+              completedAt: undefined,
+            }
+          : task
+      );
+      toastMessage = `"${taskToComplete.title}" will repeat tomorrow. You earned ${awardedTaskPoints} points.`;
+    } else if (taskToComplete.recurrence === 'weekly') {
+      let nextDueDate = addDays(taskDueDate, 7);
+      // Ensure next due date is not in the past relative to today
+       if (isAfter(startOfDay(new Date()), nextDueDate)) {
+        nextDueDate = addDays(startOfDay(new Date()), 7 - startOfDay(new Date()).getDay() + taskDueDate.getDay() ); // Align to same day of week in future
+        if(isAfter(startOfDay(new Date()), nextDueDate)) nextDueDate = addDays(nextDueDate, 7); // If still past, add another week
       }
-      
-      const taskSlayerAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'task_master_novice');
-      if (taskSlayerAchievement && taskSlayerAchievement.stages) {
-        const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
-        let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
-        const taskSlayerStatus: UserAchievementStatus = userAchievements[taskSlayerAchievement.id] || { currentStage: 0 };
-        
-        for (const stage of taskSlayerAchievement.stages) {
-          if ((!taskSlayerStatus.currentStage || taskSlayerStatus.currentStage < stage.stage) && totalCompletedTasksNow >= stage.criteriaCount) {
-            unlockAchievement(taskSlayerAchievement.id, taskSlayerAchievement.title, stage.rewardPoints, stage.stage, stage.titleSuffix);
-          }
+      updatedTasks = tasks.map(task =>
+        task.id === taskId
+          ? {
+              ...task,
+              dueDate: nextDueDate,
+              status: 'todo' as const,
+              completedAt: undefined,
+            }
+          : task
+      );
+      toastMessage = `"${taskToComplete.title}" will repeat next week. You earned ${awardedTaskPoints} points.`;
+    } else { // Not recurring or recurrence is 'none'
+      updatedTasks = tasks.map(task =>
+        task.id === taskId
+          ? { ...task, status: 'completed' as const, completedAt: completionDate }
+          : task
+      );
+      toastMessage = taskCompletedOnTime
+        ? `You earned ${awardedTaskPoints} points for "${taskToComplete.title}".`
+        : `"${taskToComplete.title}" completed late, no points awarded.`;
+    }
+
+    toast({
+        title: taskToComplete.recurrence && taskToComplete.recurrence !== 'none' ? "👍 Recurring Task Updated!" : "👍 Task Complete!",
+        description: toastMessage,
+        variant: "default"
+    });
+
+    if (awardedTaskPoints > 0) {
+      const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
+      const newTotalPoints = currentPoints + awardedTaskPoints;
+      localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+      window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
+      checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
+    }
+
+    setTasks(updatedTasks);
+
+    // Count only non-recurring completed tasks for achievements
+    const nonRecurringTasksCompletedCount = updatedTasks.filter(
+      task => task.status === 'completed' && (!task.recurrence || task.recurrence === 'none')
+    ).length;
+
+    // Update completed tasks count in localStorage, used by achievements page
+    localStorage.setItem(COMPLETED_TASKS_COUNT_KEY, nonRecurringTasksCompletedCount.toString());
+    window.dispatchEvent(new StorageEvent('storage', {key: COMPLETED_TASKS_COUNT_KEY, newValue: nonRecurringTasksCompletedCount.toString()}));
+
+
+    // "First Task Completed" achievement
+    const firstTaskAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'first_task_completed');
+    if (firstTaskAchievement && nonRecurringTasksCompletedCount === 1 && (!taskToComplete.recurrence || taskToComplete.recurrence === 'none')) {
+       unlockAchievement(firstTaskAchievement.id, firstTaskAchievement.title, firstTaskAchievement.rewardPoints || 0);
+    }
+
+    // "Task Slayer" achievement
+    const taskSlayerAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'task_master_novice');
+    if (taskSlayerAchievement && taskSlayerAchievement.stages) {
+      const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+      let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
+      const taskSlayerStatus: UserAchievementStatus = userAchievements[taskSlayerAchievement.id] || { currentStage: 0 };
+
+      for (const stage of taskSlayerAchievement.stages) {
+        if ((!taskSlayerStatus.currentStage || taskSlayerStatus.currentStage < stage.stage) && nonRecurringTasksCompletedCount >= stage.criteriaCount) {
+          unlockAchievement(taskSlayerAchievement.id, taskSlayerAchievement.title, stage.rewardPoints, stage.stage, stage.titleSuffix);
         }
       }
     }
   };
-  
+
   if (!isMounted) {
     return (
       <div className="flex h-[calc(100vh-theme(spacing.48))] w-full items-center justify-center p-6">
-        <PlusCircle className="h-12 w-12 animate-spin text-primary" />
+        <Search className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -292,7 +339,7 @@ export function TaskList() {
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         <div className="relative flex-grow w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input 
+          <Input
             placeholder="Search tasks..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -327,8 +374,8 @@ export function TaskList() {
               {editingTask ? 'Edit Task' : 'Create New Task'}
             </DialogTitle>
           </DialogHeader>
-          <NewTaskForm 
-            onSubmit={editingTask ? handleUpdateTask : handleCreateTask} 
+          <NewTaskForm
+            onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
             onDialogClose={handleCloseDialog}
             initialData={editingTask ? {
               title: editingTask.title,
@@ -336,7 +383,8 @@ export function TaskList() {
               dueDate: editingTask.dueDate,
               priority: editingTask.priority,
               category: editingTask.category,
-            } : {}}
+              recurrence: editingTask.recurrence || 'none',
+            } : { recurrence: 'none' }} // Ensure new tasks default recurrence to 'none' in form
             isEditing={!!editingTask}
           />
         </DialogContent>
@@ -345,10 +393,10 @@ export function TaskList() {
       {filteredAndSortedTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedTasks.map((task) => (
-            <TaskCard 
-              key={task.id} 
-              task={task} 
-              onCompleteTask={handleCompleteTask} 
+            <TaskCard
+              key={task.id}
+              task={task}
+              onCompleteTask={handleCompleteTask}
               onEditTask={handleOpenEditDialog}
             />
           ))}

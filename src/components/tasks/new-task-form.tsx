@@ -2,12 +2,12 @@
 "use client";
 
 import type * as React from "react";
-import { useEffect } from "react"; // Import useEffect
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, PlusCircle, Edit3 } from "lucide-react"; // Added Edit3
+import { CalendarIcon, PlusCircle, Edit3 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-// Task type not needed here directly, TaskFormData covers form fields
 
 const taskFormSchema = z.object({
   title: z.string().min(3, {
@@ -49,6 +48,7 @@ const taskFormSchema = z.object({
     required_error: "Priority is required.",
   }),
   category: z.string().optional(),
+  recurrence: z.enum(["none", "daily", "weekly"]).optional().default("none"), // Added recurrence
 });
 
 export type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -56,30 +56,31 @@ export type TaskFormData = z.infer<typeof taskFormSchema>;
 interface NewTaskFormProps {
   onSubmit: (data: TaskFormData) => void;
   onDialogClose: () => void;
-  initialData?: Partial<TaskFormData>; 
-  isEditing?: boolean; // To explicitly know if it's edit mode
+  initialData?: Partial<TaskFormData>;
+  isEditing?: boolean;
 }
 
 export function NewTaskForm({ onSubmit, onDialogClose, initialData = {}, isEditing = false }: NewTaskFormProps) {
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
-    defaultValues: { // Set defaultValues here to ensure reactivity
+    defaultValues: {
       title: initialData.title || "",
       description: initialData.description || "",
       dueDate: initialData.dueDate,
       priority: initialData.priority || "medium",
       category: initialData.category || "",
+      recurrence: initialData.recurrence || "none", // Default recurrence
     },
   });
 
-  // Reset form when initialData changes (e.g., when opening dialog for different tasks)
   useEffect(() => {
     form.reset({
       title: initialData.title || "",
       description: initialData.description || "",
-      dueDate: initialData.dueDate, // This can be undefined if not set
+      dueDate: initialData.dueDate,
       priority: initialData.priority || "medium",
       category: initialData.category || "",
+      recurrence: initialData.recurrence || "none",
     });
   }, [initialData, form.reset, form]);
 
@@ -155,7 +156,7 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData = {}, isEditi
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        !isEditing && date < new Date(new Date().setHours(0,0,0,0)) // Disable past dates only for new tasks
+                        !isEditing && date < new Date(new Date().setHours(0,0,0,0))
                       }
                       initialFocus
                     />
@@ -175,7 +176,7 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData = {}, isEditi
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
-                  value={field.value} // Ensure value is controlled
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -205,6 +206,36 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData = {}, isEditi
               </FormControl>
               <FormDescription>
                 Assign a category to help organize your tasks.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="recurrence"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Recurrence</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value || "none"}
+                value={field.value || "none"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select recurrence" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Set how often this task should repeat.
               </FormDescription>
               <FormMessage />
             </FormItem>

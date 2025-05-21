@@ -1,7 +1,7 @@
 
 import type { Task } from '@/types';
 import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/lib/constants';
-import { CalendarIcon, TagIcon, Award, CheckSquare, Pencil } from 'lucide-react';
+import { CalendarIcon, TagIcon, Award, CheckSquare, Pencil, Repeat } from 'lucide-react'; // Added Repeat
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -74,18 +74,40 @@ export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
               <CalendarIcon className="h-3.5 w-3.5" />
               <span>{format(task.dueDate, 'MMM dd, yyyy')}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <TagIcon className="h-3.5 w-3.5" />
-              <span>{task.category}</span>
-            </div>
+            {task.recurrence && task.recurrence !== 'none' && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-default">
+                      <Repeat className="h-3 w-3" />
+                      <span>
+                        {task.recurrence === 'daily' && 'Daily'}
+                        {task.recurrence === 'weekly' && 'Weekly'}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>This task repeats {task.recurrence}.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+           <div className="flex justify-between items-center text-xs text-muted-foreground mt-1">
+            {task.category && (
+              <div className="flex items-center gap-1.5">
+                <TagIcon className="h-3.5 w-3.5" />
+                <span>{task.category}</span>
+              </div>
+            )}
+            {task.points && (
+              <div className="flex items-center gap-1.5 text-yellow-500">
+                <Award className="h-3.5 w-3.5" />
+                <span>{task.points} points</span>
+              </div>
+            )}
           </div>
 
-          {task.points && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-              <Award className="h-3.5 w-3.5 text-yellow-500" />
-              <span>{task.points} points</span>
-            </div>
-          )}
 
           <div className={cn(
             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3",
@@ -121,6 +143,9 @@ export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
             Complete
           </Button>
         </div>
+      )}
+      {task.status === 'completed' && task.recurrence && task.recurrence !== 'none' && (
+         <p className="text-xs text-muted-foreground mt-2 text-center">This recurring task will reset to 'To Do' for its next due date.</p>
       )}
     </div>
   );
