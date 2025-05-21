@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { DUMMY_TASKS } from '@/lib/constants';
 import type { Task } from '@/types';
 import { format, isSameDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // Badge might not be used anymore for priority/status here
 import { TASK_PRIORITY_MAP, TASK_STATUS_MAP } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -91,23 +92,32 @@ export function CalendarView() {
                     const priorityInfo = TASK_PRIORITY_MAP[task.priority];
                     const statusInfo = TASK_STATUS_MAP[task.status];
                     return (
-                      <li key={task.id} className="p-3 rounded-md border bg-background/50 hover:bg-muted/50 transition-colors">
-                        <h4 className="font-medium text-sm text-foreground">{task.title}</h4>
-                        <div className="flex items-center justify-between mt-1 text-xs">
-                          <Badge variant={
-                            task.priority === 'high' ? 'destructive' : 
-                            task.priority === 'medium' ? 'secondary' : 'outline'
-                          } className={cn(
-                            priorityInfo.color === 'text-red-500' ? 'border-red-500/50 text-red-600' :
-                            priorityInfo.color === 'text-yellow-500' ? 'border-yellow-500/50 text-yellow-600' :
-                            'border-green-500/50 text-green-600'
+                      <li key={task.id} className="p-4 rounded-lg border bg-card shadow-md hover:shadow-lg transition-shadow">
+                        <h4 className="font-semibold text-base text-card-foreground mb-2">{task.title}</h4>
+                        
+                        <div className="flex items-center justify-between text-xs">
+                          {/* Priority Badge */}
+                          <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
+                            priorityInfo.color, // Applies text color like text-red-500
+                            priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
+                            priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-500/10 dark:bg-yellow-500/20' : // Ensure consistent color reference
+                            'bg-green-500/10 dark:bg-green-500/20'
                           )}>
-                            <priorityInfo.icon className={cn("h-3 w-3 mr-1", priorityInfo.color)} />
-                            {priorityInfo.label}
-                          </Badge>
-                           <div className="flex items-center gap-1">
-                            <statusInfo.icon className={cn("h-3 w-3", statusInfo.color, statusInfo.iconClassName)} />
-                            <span className={cn("text-xs", statusInfo.color)}>{statusInfo.label}</span>
+                            <priorityInfo.icon className={cn("h-3.5 w-3.5")} /> {/* Color inherited */}
+                            <span>{priorityInfo.label}</span> {/* Color inherited */}
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
+                            statusInfo.color, // Applies text color like text-primary, text-green-500, etc.
+                            task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
+                            task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
+                            'bg-muted' // For 'todo', text-muted-foreground is applied by statusInfo.color
+                          )}>
+                            <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} /> {/* Color inherited, iconClassName for spin */}
+                            <span>{statusInfo.label}</span> {/* Color inherited */}
                           </div>
                         </div>
                       </li>
