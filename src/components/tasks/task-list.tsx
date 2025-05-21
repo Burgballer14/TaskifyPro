@@ -141,7 +141,7 @@ export function TaskList() {
               Create Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl">Create New Task</DialogTitle>
             </DialogHeader>
@@ -168,3 +168,4 @@ export function TaskList() {
     </div>
   );
 }
+
