@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, Flame, Sun, Moon, Palette, Sparkles } from "lucide-react"
+import { LogOut, Settings, Flame, Sun, Moon, Palette, Sparkles, Dog, PawPrint } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useDailyStreak } from "@/hooks/useDailyStreak";
@@ -24,17 +24,21 @@ import { useToast } from "@/hooks/use-toast"
 
 const THEME_KEY = 'taskifyProTheme';
 const SUNSET_THEME_UNLOCKED_KEY = 'taskifyProSunsetThemeUnlocked';
+const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
+const SELECTED_PET_KEY = 'taskifyProSelectedPet';
 
 type Theme = 'light' | 'dark' | 'sunset-glow';
+type Pet = 'doggo' | null;
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [currentYear, setCurrentYear] = React.useState<number | null>(null);
   const { streak, isLoadingStreak } = useDailyStreak();
   const [theme, setTheme] = React.useState<Theme>('light');
   const [isSunsetUnlocked, setIsSunsetUnlocked] = React.useState(false);
-  const [mounted, setMounted] = React.useState(false); // To avoid hydration mismatch
+  const [isDoggoUnlocked, setIsDoggoUnlocked] = React.useState(false);
+  const [selectedPet, setSelectedPet] = React.useState<Pet>(null);
+  const [mounted, setMounted] = React.useState(false);
   const { toast } = useToast();
-
 
   React.useEffect(() => {
     setMounted(true);
@@ -44,9 +48,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const sunsetUnlockedStatus = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
     setIsSunsetUnlocked(sunsetUnlockedStatus);
 
+    const doggoUnlockedStatus = localStorage.getItem(DOGGO_PET_UNLOCKED_KEY) === 'true';
+    setIsDoggoUnlocked(doggoUnlockedStatus);
+    const storedSelectedPet = localStorage.getItem(SELECTED_PET_KEY) as Pet | null;
+    if (doggoUnlockedStatus && storedSelectedPet) {
+      setSelectedPet(storedSelectedPet);
+    } else if (doggoUnlockedStatus && !storedSelectedPet) {
+      // If doggo is unlocked but no pet selected, make doggo the default
+      setSelectedPet('doggo');
+      localStorage.setItem(SELECTED_PET_KEY, 'doggo');
+    } else {
+      setSelectedPet(null);
+    }
+
+
     if (storedTheme) {
       if (storedTheme === 'sunset-glow' && !sunsetUnlockedStatus) {
-        setTheme('light'); // Default to light if sunset not unlocked
+        setTheme('light'); 
         localStorage.setItem(THEME_KEY, 'light');
       } else {
         setTheme(storedTheme);
@@ -70,7 +88,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       if (isSunsetUnlocked) {
         document.documentElement.classList.add('sunset-glow');
       } else {
-        // Fallback if somehow selected but not unlocked
         setTheme('light'); 
         document.documentElement.classList.remove('dark', 'sunset-glow');
         localStorage.setItem(THEME_KEY, 'light');
@@ -80,23 +97,37 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme, isSunsetUnlocked, mounted]);
   
-  // Effect to listen for theme unlock from ThemeUnlockCard
   React.useEffect(() => {
-    const handleStorageChange = () => {
-      const sunsetUnlockedStatus = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
-      if (sunsetUnlockedStatus !== isSunsetUnlocked) {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === SUNSET_THEME_UNLOCKED_KEY) {
+        const sunsetUnlockedStatus = event.newValue === 'true';
         setIsSunsetUnlocked(sunsetUnlockedStatus);
+      }
+      if (event.key === DOGGO_PET_UNLOCKED_KEY) {
+        const doggoUnlockedStatus = event.newValue === 'true';
+        setIsDoggoUnlocked(doggoUnlockedStatus);
+      }
+      if (event.key === SELECTED_PET_KEY) {
+        setSelectedPet(event.newValue as Pet | null);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Also check on mount in case ThemeUnlockCard updates localStorage before this component mounts fully
-    handleStorageChange(); 
+    // Check on mount
+    const initialSunsetUnlocked = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
+    if (initialSunsetUnlocked !== isSunsetUnlocked) setIsSunsetUnlocked(initialSunsetUnlocked);
+    
+    const initialDoggoUnlocked = localStorage.getItem(DOGGO_PET_UNLOCKED_KEY) === 'true';
+    if (initialDoggoUnlocked !== isDoggoUnlocked) setIsDoggoUnlocked(initialDoggoUnlocked);
+
+    const initialSelectedPet = localStorage.getItem(SELECTED_PET_KEY) as Pet | null;
+    if (initialSelectedPet !== selectedPet) setSelectedPet(initialSelectedPet);
+
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isSunsetUnlocked]);
+  }, [isSunsetUnlocked, isDoggoUnlocked, selectedPet]);
 
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -112,7 +143,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   if (!mounted) {
-    // Return a basic layout or null during server render / pre-hydration
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Flame className="h-12 w-12 animate-spin text-primary" />
@@ -136,6 +166,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent className="p-4">
           <SidebarNav />
+           {/* Pet Assistant Display Area START */}
+            {mounted && isDoggoUnlocked && selectedPet === 'doggo' && (
+              <div className="mt-6 p-4 rounded-lg bg-sidebar-accent/30 border border-sidebar-border/50 text-center shadow-md">
+                <Dog className="h-20 w-20 mx-auto text-primary mb-2 animate-bounce [animation-duration:2s]" />
+                <p className="text-base font-semibold text-sidebar-foreground">Doggo is cheering you on!</p>
+                <p className="text-xs text-muted-foreground">Keep up the great work!</p>
+              </div>
+            )}
+            {mounted && !isDoggoUnlocked && (
+              <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border/50 text-center">
+                <div className="w-20 h-20 mx-auto rounded-full bg-background flex items-center justify-center mb-2 shadow-inner">
+                  <PawPrint className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Want a Companion?</p>
+                <p className="text-xs text-muted-foreground">Unlock a pet from the Analytics page!</p>
+              </div>
+            )}
+           {/* Pet Assistant Display Area END */}
         </SidebarContent>
         <SidebarFooter className="p-4 border-t border-sidebar-border mt-auto">
           <div className="flex flex-col gap-2">
