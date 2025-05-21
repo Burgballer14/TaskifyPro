@@ -1,23 +1,29 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
-import { DUMMY_TASKS } from '@/lib/constants';
+import { loadTasksFromLocalStorage } from '@/lib/task-storage'; // Updated import
 import type { Task } from '@/types';
 import { format, isSameDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge'; // Badge might not be used anymore for priority/status here
 import { TASK_PRIORITY_MAP, TASK_STATUS_MAP } from '@/lib/constants';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react'; // For loading state
 
 export function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setTasks(loadTasksFromLocalStorage());
+    setIsLoading(false);
+  }, []);
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
-    DUMMY_TASKS.forEach(task => {
+    tasks.forEach(task => {
       const dateKey = format(task.dueDate, 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
@@ -25,7 +31,7 @@ export function CalendarView() {
       map.get(dateKey)!.push(task);
     });
     return map;
-  }, []);
+  }, [tasks]);
 
   const tasksForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
@@ -50,6 +56,14 @@ export function CalendarView() {
       textUnderlineOffset: '0.2em',
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-theme(spacing.28))] w-full items-center justify-center p-6">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
   
 
   return (
@@ -101,7 +115,7 @@ export function CalendarView() {
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
                             priorityInfo.color, // Applies text color like text-red-500
                             priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
-                            priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-500/10 dark:bg-yellow-500/20' : // Ensure consistent color reference
+                            priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-500/10 dark:bg-yellow-500/20' : 
                             'bg-green-500/10 dark:bg-green-500/20'
                           )}>
                             <priorityInfo.icon className={cn("h-3.5 w-3.5")} /> {/* Color inherited */}
