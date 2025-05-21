@@ -1,3 +1,4 @@
+
 import type { Task } from '@/types';
 import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/lib/constants';
 import { CalendarIcon, TagIcon } from 'lucide-react';
@@ -12,14 +13,24 @@ export function TaskCard({ task }: TaskCardProps) {
   const statusInfo = TASK_STATUS_MAP[task.status];
   const priorityInfo = TASK_PRIORITY_MAP[task.priority];
 
+  const priorityBorderClass =
+    task.priority === 'high' ? 'border-t-destructive' :
+    task.priority === 'medium' ? 'border-t-yellow-400 dark:border-t-yellow-500' :
+    task.priority === 'low' ? 'border-t-green-400 dark:border-t-green-500' :
+    'border-t-transparent';
+
   return (
-    <div className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md border border-white/20 rounded-xl shadow-lg p-5 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+    <div className={cn(
+      "bg-card text-card-foreground bg-opacity-80 dark:bg-opacity-80 backdrop-blur-sm border rounded-xl shadow-lg p-4 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-0.5",
+      "border-t-[5px]", // Thicker top border for priority
+      priorityBorderClass  // Color for the top border based on priority
+    )}>
       <div className="flex justify-between items-start mb-3">
         <h3 className="text-lg font-semibold text-foreground">{task.title}</h3>
-        <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium", 
-                           priorityInfo.color === 'text-red-500' ? 'bg-red-500/10' :
-                           priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-500/10' :
-                           'bg-green-500/10'
+        <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+                           priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
+                           priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-400/20 dark:bg-yellow-500/20' :
+                           'bg-green-500/10 dark:bg-green-500/20'
                            )}>
           <priorityInfo.icon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
           <span className={priorityInfo.color}>{priorityInfo.label}</span>
