@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { DUMMY_TASKS } from '@/lib/constants';
 import type { Task } from '@/types';
 import { generateDailySummary, type DailySummaryInput, type DailySummaryOutput } from '@/ai/flows/daily-summary-flow';
-import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval, isBefore } from 'date-fns';
+import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval, isBefore, endOfDay } from 'date-fns';
 import { ThemeUnlockCard } from '@/components/analytics/theme-unlock-card';
 
 function isDateToday(date: Date | undefined): boolean {
@@ -18,38 +18,49 @@ export default async function AnalyticsPage() {
   const userName = "User"; // Hardcoded for now
   const today = startOfToday();
 
-  const tasksCompletedToday = DUMMY_TASKS.filter(
+  const tasksCompletedTodayList = DUMMY_TASKS.filter(
     (task) => task.status === 'completed' && isDateToday(task.completedAt)
   );
+
+  const dailyScore = tasksCompletedTodayList.reduce((sum, task) => {
+    const completedOnTime = task.completedAt && task.dueDate && 
+                           (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
+    const awardedPoints = completedOnTime ? (task.points || 0) : 0;
+    return sum + awardedPoints;
+  }, 0);
 
   const tasksOpenToday = DUMMY_TASKS.filter(
     (task) => task.status !== 'completed' && isDateToday(task.dueDate)
   );
 
-  const dailyScore = tasksCompletedToday.reduce((sum, task) => sum + (task.points || 0), 0);
-
   // Calculate weekly progress
   const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-  const tasksCompletedThisWeek = DUMMY_TASKS.filter(
+  const tasksCompletedThisWeekList = DUMMY_TASKS.filter(
     (task) =>
       task.status === 'completed' &&
       task.completedAt &&
       isWithinInterval(task.completedAt, { start: weekStart, end: weekEnd })
   );
-  const pointsThisWeek = tasksCompletedThisWeek.reduce((sum, task) => sum + (task.points || 0), 0);
+
+  const pointsThisWeek = tasksCompletedThisWeekList.reduce((sum, task) => {
+    const completedOnTime = task.completedAt && task.dueDate && 
+                           (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
+    const awardedPoints = completedOnTime ? (task.points || 0) : 0;
+    return sum + awardedPoints;
+  }, 0);
 
   // Calculate stats for the new row
   const totalActiveTasks = DUMMY_TASKS.filter(task => task.status === 'todo' || task.status === 'inProgress').length;
   
   const overdueTasksCount = DUMMY_TASKS.filter(
-    task => task.status !== 'completed' && isBefore(task.dueDate, today)
+    task => task.status !== 'completed' && task.dueDate && isBefore(task.dueDate, today) // Ensure dueDate exists
   ).length;
 
   const summaryInput: DailySummaryInput = {
     userName,
-    tasksCompletedToday: tasksCompletedToday.length,
+    tasksCompletedToday: tasksCompletedTodayList.length,
     tasksOpenToday: tasksOpenToday.length,
   };
 
@@ -77,7 +88,7 @@ export default async function AnalyticsPage() {
         pointsThisWeek={pointsThisWeek}
         weeklyPointGoal={WEEKLY_POINT_GOAL}
         totalActiveTasks={totalActiveTasks}
-        tasksCompletedThisWeekCount={tasksCompletedThisWeek.length}
+        tasksCompletedThisWeekCount={tasksCompletedThisWeekList.length}
         overdueTasksCount={overdueTasksCount}
       />
       <div className="mt-8"> {/* Added margin top for separation */}
