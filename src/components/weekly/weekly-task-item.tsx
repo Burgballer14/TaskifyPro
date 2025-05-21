@@ -12,7 +12,7 @@ interface WeeklyTaskItemProps {
 export function WeeklyTaskItem({ task }: WeeklyTaskItemProps) {
   const priorityInfo = TASK_PRIORITY_MAP[task.priority];
 
-  const priorityBorderClass =
+  const priorityBarColor =
     task.priority === 'high' ? 'bg-destructive' :
     task.priority === 'medium' ? 'bg-yellow-400 dark:bg-yellow-500' :
     task.priority === 'low' ? 'bg-green-500' :
@@ -20,14 +20,14 @@ export function WeeklyTaskItem({ task }: WeeklyTaskItemProps) {
 
   return (
     <div className={cn(
-      "flex items-center gap-3 p-2.5 rounded-lg bg-card shadow hover:shadow-lg transition-shadow duration-200",
-      task.status === 'completed' ? 'opacity-60' : ''
+      "flex items-center gap-2 p-2 rounded-md bg-card/80 shadow-sm hover:shadow-md transition-shadow duration-200 border border-border/70",
+      task.status === 'completed' ? 'opacity-70' : ''
     )}>
-      <div className={cn("w-1.5 h-10 rounded-full flex-shrink-0", priorityBorderClass)}></div>
+      <div className={cn("w-1 h-6 rounded-full flex-shrink-0", priorityBarColor)}></div>
       <div className="flex-grow overflow-hidden">
         <p 
           className={cn(
-            "text-sm font-medium text-foreground truncate",
+            "text-xs sm:text-sm font-medium text-foreground truncate",
             task.status === 'completed' ? 'line-through text-muted-foreground' : ''
           )} 
           title={task.title}
@@ -35,7 +35,7 @@ export function WeeklyTaskItem({ task }: WeeklyTaskItemProps) {
           {task.title}
         </p>
          {task.category && (
-          <p className="text-xs text-muted-foreground">{task.category}</p>
+          <p className="text-xs text-muted-foreground/80">{task.category}</p>
         )}
       </div>
     </div>
