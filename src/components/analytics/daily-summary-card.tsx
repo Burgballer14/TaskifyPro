@@ -7,9 +7,10 @@ interface DailySummaryCardProps {
   userName: string;
   summaryOutput: DailySummaryOutput;
   dailyScore: number;
+  dailyPointCap: number; // New prop
 }
 
-export function DailySummaryCard({ userName, summaryOutput, dailyScore }: DailySummaryCardProps) {
+export function DailySummaryCard({ userName, summaryOutput, dailyScore, dailyPointCap }: DailySummaryCardProps) {
   return (
     <Card className="shadow-lg bg-gradient-to-br from-primary/10 via-background to-background border-primary/30">
       <CardHeader className="pb-4">
@@ -35,7 +36,7 @@ export function DailySummaryCard({ userName, summaryOutput, dailyScore }: DailyS
             </h3>
           </div>
           <p className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-            {dailyScore}
+            {dailyScore} / {dailyPointCap}
           </p>
           <p className="text-xs text-muted-foreground mt-1">points earned today!</p>
         </div>

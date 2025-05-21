@@ -12,9 +12,9 @@ const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
 const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance';
 
-const INITIAL_USER_POINTS = 500;
-const SUNSET_THEME_COST = 100;
-const DOGGO_PET_COST = 200;
+const INITIAL_USER_POINTS = 500; // Initial points if none are found
+const SUNSET_THEME_COST = 500; // Updated cost
+const DOGGO_PET_COST = 500;    // Updated cost
 
 type Pet = 'doggo' | null;
 

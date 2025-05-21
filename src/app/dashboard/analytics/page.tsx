@@ -16,8 +16,8 @@ function isDateToday(date: Date | undefined): boolean {
   return isSameDay(date, startOfToday());
 }
 
-const WEEKLY_POINT_GOAL = 150; // Hardcoded weekly goal, also acts as weekly cap
-const DAILY_POINT_CAP = 50;   // New daily point cap
+const WEEKLY_POINT_GOAL = 1050; // Updated weekly goal, also acts as weekly cap
+const DAILY_POINT_CAP = 150;   // Updated daily point cap
 
 export default function AnalyticsPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -131,6 +131,7 @@ export default function AnalyticsPage() {
         userName={analyticsData.userName}
         summaryOutput={summaryOutput}
         dailyScore={analyticsData.dailyScore}
+        dailyPointCap={DAILY_POINT_CAP} // Pass daily cap
         pointsThisWeek={analyticsData.pointsThisWeek}
         weeklyPointGoal={WEEKLY_POINT_GOAL}
         totalActiveTasks={analyticsData.totalActiveTasks}

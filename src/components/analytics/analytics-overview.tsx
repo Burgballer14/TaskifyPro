@@ -8,6 +8,7 @@ interface AnalyticsOverviewProps {
   userName: string;
   summaryOutput: DailySummaryOutput;
   dailyScore: number;
+  dailyPointCap: number; // New prop
   pointsThisWeek: number;
   weeklyPointGoal: number;
   totalActiveTasks: number;
@@ -19,6 +20,7 @@ export function AnalyticsOverview({
   userName, 
   summaryOutput, 
   dailyScore,
+  dailyPointCap, // Destructure new prop
   pointsThisWeek,
   weeklyPointGoal,
   totalActiveTasks,
@@ -37,6 +39,7 @@ export function AnalyticsOverview({
         userName={userName}
         summaryOutput={summaryOutput}
         dailyScore={dailyScore}
+        dailyPointCap={dailyPointCap} // Pass to DailySummaryCard
       />
       <WeeklyProgressCard 
         currentPoints={pointsThisWeek}
