@@ -1,7 +1,7 @@
 
 import type { Task } from '@/types';
 import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/lib/constants';
-import { CalendarIcon, TagIcon } from 'lucide-react';
+import { CalendarIcon, TagIcon, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +40,7 @@ export function TaskCard({ task }: TaskCardProps) {
         {task.description}
       </p>
       <div className="border-t border-border/50 pt-4">
-        <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
+        <div className="flex justify-between items-center text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5" />
             <span>{format(task.dueDate, 'MMM dd, yyyy')}</span>
@@ -50,17 +50,26 @@ export function TaskCard({ task }: TaskCardProps) {
             <span>{task.category}</span>
           </div>
         </div>
+
+        {task.points && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+            <Award className="h-3.5 w-3.5 text-yellow-500" />
+            <span>{task.points} points</span>
+          </div>
+        )}
+
         <div className={cn(
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-          statusInfo.color, // Applies text color like text-primary, text-green-500, etc.
+          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3", // Added mt-3 for spacing
+          statusInfo.color, 
           task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
           task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
-          'bg-muted' // For 'todo', text-muted-foreground is applied by statusInfo.color
+          'bg-muted' 
         )}>
-          <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} /> {/* Color inherited */}
-          <span>{statusInfo.label}</span> {/* Color inherited */}
+          <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} />
+          <span>{statusInfo.label}</span>
         </div>
       </div>
     </div>
   );
 }
+

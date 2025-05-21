@@ -19,6 +19,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'high',
     category: 'Design',
     createdAt: new Date(new Date().setDate(new Date().getDate() - 2)),
+    points: 30,
   },
   {
     id: '2',
@@ -29,6 +30,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'high',
     category: 'Development',
     createdAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    points: 30,
   },
   {
     id: '3',
@@ -39,6 +41,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'medium',
     category: 'Marketing',
     createdAt: new Date(),
+    points: 20,
   },
   {
     id: '4',
@@ -50,6 +53,7 @@ export const DUMMY_TASKS: Task[] = [
     category: 'Meetings',
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)),
     completedAt: new Date(new Date().setDate(new Date().getDate() -1)),
+    points: 30,
   },
   {
     id: '5',
@@ -60,6 +64,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'low',
     category: 'Development',
     createdAt: new Date(),
+    points: 10,
   },
   {
     id: '6',
@@ -70,6 +75,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'medium',
     category: 'HR',
     createdAt: new Date(new Date().setDate(new Date().getDate() - 3)),
+    points: 20,
   },
   {
     id: '7',
@@ -80,6 +86,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'high',
     category: 'Finance',
     createdAt: new Date(new Date().setDate(new Date().getDate() -1)),
+    points: 30,
   },
   {
     id: '8',
@@ -90,6 +97,7 @@ export const DUMMY_TASKS: Task[] = [
     priority: 'medium',
     category: 'UX Research',
     createdAt: new Date(),
+    points: 20,
   },
 ];
 
@@ -110,3 +118,4 @@ export const TASK_PRIORITY_MAP: Record<
   medium: { label: 'Medium', icon: Minus, color: 'text-yellow-500' },
   high: { label: 'High', icon: ArrowUpNarrowWide, color: 'text-red-500' },
 };
+

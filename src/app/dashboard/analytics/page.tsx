@@ -22,7 +22,7 @@ export default async function AnalyticsPage() {
     (task) => task.status !== 'completed' && isDateToday(task.dueDate)
   );
 
-  const dailyScore = tasksCompletedToday.length * 10;
+  const dailyScore = tasksCompletedToday.reduce((sum, task) => sum + (task.points || 0), 0);
 
   const summaryInput: DailySummaryInput = {
     userName,
@@ -56,3 +56,4 @@ export default async function AnalyticsPage() {
     </>
   );
 }
+

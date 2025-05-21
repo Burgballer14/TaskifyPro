@@ -8,4 +8,6 @@ export interface Task {
   category: string;
   createdAt: Date;
   completedAt?: Date;
+  points?: number;
 }
+
