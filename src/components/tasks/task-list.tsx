@@ -15,10 +15,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
-import { PlusCircle, Search } from 'lucide-react'; // Removed Pencil, it's not used directly here
+import { PlusCircle, Search } from 'lucide-react';
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
-import { isAfter, endOfDay } from 'date-fns'; // Added imports
+import { isAfter, endOfDay } from 'date-fns';
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -44,11 +44,20 @@ export function TaskList() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [userPoints, setUserPoints] = useState(INITIAL_USER_POINTS); // For reflecting point changes from achievements
   const { toast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
     setTasks(loadTasksFromLocalStorage());
+    if (typeof window !== 'undefined') {
+      const storedPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
+      if (storedPoints) {
+        setUserPoints(parseInt(storedPoints, 10));
+      } else {
+        localStorage.setItem(USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS.toString());
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -131,6 +140,7 @@ export function TaskList() {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
         const newTotalPoints = currentPoints + achievement.rewardPoints;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        setUserPoints(newTotalPoints); // Update local state for header
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${achievement.rewardPoints} Points!)`;
       }
@@ -194,13 +204,13 @@ export function TaskList() {
       const dueDate = new Date(taskJustCompleted.dueDate);
       const completedAt = new Date(taskJustCompleted.completedAt);
       
-      // A task is on time if it's completed on or before the end of its due date
       const onTime = !isAfter(completedAt, endOfDay(dueDate));
 
       if (onTime) {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
         const newTotalPoints = currentPoints + taskJustCompleted.points;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        setUserPoints(newTotalPoints); // Update local state
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         toast({
           title: "👍 Task Complete!",
@@ -217,9 +227,8 @@ export function TaskList() {
     }
 
     // Check for "First Task Completed" achievement
-    // This check relies on the state *before* this specific task was marked completed.
-    const previouslyCompletedTasksCount = tasksBeforeUpdate.filter(task => task.status === 'completed').length;
-    if (taskJustCompleted && taskJustCompleted.status === 'completed' && previouslyCompletedTasksCount === 0) {
+    if (taskJustCompleted && taskJustCompleted.status === 'completed') {
+      // The unlockAchievement function itself will check if it's already unlocked.
       unlockAchievement('first_task_completed', 'First Step Taken');
     }
     
@@ -313,4 +322,3 @@ export function TaskList() {
     </div>
   );
 }
-
