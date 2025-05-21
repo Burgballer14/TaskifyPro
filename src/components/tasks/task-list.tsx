@@ -97,6 +97,16 @@ export function TaskList() {
     setIsNewTaskDialogOpen(false);
   };
 
+  const handleCompleteTask = (taskId: string) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId
+          ? { ...task, status: 'completed', completedAt: new Date() }
+          : task
+      )
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -146,7 +156,7 @@ export function TaskList() {
       {filteredAndSortedTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard key={task.id} task={task} onCompleteTask={handleCompleteTask} />
           ))}
         </div>
       ) : (

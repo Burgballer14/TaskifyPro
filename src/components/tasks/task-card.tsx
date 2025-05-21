@@ -1,15 +1,17 @@
 
 import type { Task } from '@/types';
 import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/lib/constants';
-import { CalendarIcon, TagIcon, Award } from 'lucide-react';
+import { CalendarIcon, TagIcon, Award, CheckSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface TaskCardProps {
   task: Task;
+  onCompleteTask: (taskId: string) => void;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, onCompleteTask }: TaskCardProps) {
   const statusInfo = TASK_STATUS_MAP[task.status];
   const priorityInfo = TASK_PRIORITY_MAP[task.priority];
 
@@ -21,55 +23,68 @@ export function TaskCard({ task }: TaskCardProps) {
 
   return (
     <div className={cn(
-      "bg-card text-card-foreground bg-opacity-80 dark:bg-opacity-80 backdrop-blur-sm border rounded-xl shadow-lg p-4 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-0.5",
+      "bg-card text-card-foreground bg-opacity-80 dark:bg-opacity-80 backdrop-blur-sm border rounded-xl shadow-lg p-4 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-0.5 flex flex-col justify-between",
       "border-t-[5px]", // Thicker top border for priority
       priorityBorderClass  // Color for the top border based on priority
     )}>
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="text-lg font-semibold text-foreground">{task.title}</h3>
-        <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-                           priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
-                           priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-400/20 dark:bg-yellow-500/20' :
-                           'bg-green-500/10 dark:bg-green-500/20'
-                           )}>
-          <priorityInfo.icon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
-          <span className={priorityInfo.color}>{priorityInfo.label}</span>
+      <div>
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="text-lg font-semibold text-foreground">{task.title}</h3>
+          <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+                             priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
+                             priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-400/20 dark:bg-yellow-500/20' :
+                             'bg-green-500/10 dark:bg-green-500/20'
+                             )}>
+            <priorityInfo.icon className={cn("h-3.5 w-3.5", priorityInfo.color)} />
+            <span className={priorityInfo.color}>{priorityInfo.label}</span>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden">
+          {task.description}
+        </p>
+        <div className="border-t border-border/50 pt-4">
+          <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <CalendarIcon className="h-3.5 w-3.5" />
+              <span>{format(task.dueDate, 'MMM dd, yyyy')}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TagIcon className="h-3.5 w-3.5" />
+              <span>{task.category}</span>
+            </div>
+          </div>
+
+          {task.points && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+              <Award className="h-3.5 w-3.5 text-yellow-500" />
+              <span>{task.points} points</span>
+            </div>
+          )}
+
+          <div className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3", 
+            statusInfo.color, 
+            task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
+            task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
+            'bg-muted' 
+          )}>
+            <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} />
+            <span>{statusInfo.label}</span>
+          </div>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden">
-        {task.description}
-      </p>
-      <div className="border-t border-border/50 pt-4">
-        <div className="flex justify-between items-center text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <CalendarIcon className="h-3.5 w-3.5" />
-            <span>{format(task.dueDate, 'MMM dd, yyyy')}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <TagIcon className="h-3.5 w-3.5" />
-            <span>{task.category}</span>
-          </div>
-        </div>
-
-        {task.points && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-            <Award className="h-3.5 w-3.5 text-yellow-500" />
-            <span>{task.points} points</span>
-          </div>
-        )}
-
-        <div className={cn(
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3", // Added mt-3 for spacing
-          statusInfo.color, 
-          task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
-          task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
-          'bg-muted' 
-        )}>
-          <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} />
-          <span>{statusInfo.label}</span>
-        </div>
-      </div>
+      
+      {task.status !== 'completed' && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-4 w-full"
+          onClick={() => onCompleteTask(task.id)}
+        >
+          <CheckSquare className="mr-2 h-4 w-4" />
+          Mark as Complete
+        </Button>
+      )}
     </div>
   );
 }
-
