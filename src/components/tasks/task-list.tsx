@@ -13,12 +13,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
-import { PlusCircle, Search, Pencil } from 'lucide-react';
+import { PlusCircle, Search } from 'lucide-react'; // Removed Pencil, it's not used directly here
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
+import { isAfter, endOfDay } from 'date-fns'; // Added imports
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -116,6 +116,7 @@ export function TaskList() {
   };
 
   const unlockAchievement = (achievementId: string, achievementTitle: string) => {
+    if (typeof window === 'undefined') return;
     const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
     
@@ -178,20 +179,53 @@ export function TaskList() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    let firstTimeCompletingAnyTask = !tasks.some(task => task.status === 'completed');
-    let updatedTasks = tasks.map(task =>
+    const tasksBeforeUpdate = [...tasks];
+    const updatedTasks = tasksBeforeUpdate.map(task =>
       task.id === taskId
-        ? { ...task, status: 'completed', completedAt: new Date() }
+        ? { ...task, status: 'completed' as const, completedAt: new Date() }
         : task
     );
     setTasks(updatedTasks);
 
-    if (firstTimeCompletingAnyTask && updatedTasks.find(t => t.id === taskId)?.status === 'completed') {
-      unlockAchievement('first_task_completed', 'First Step Taken');
+    const taskJustCompleted = updatedTasks.find(t => t.id === taskId);
+
+    // Award points for completing the task on time
+    if (taskJustCompleted && taskJustCompleted.status === 'completed' && taskJustCompleted.points && taskJustCompleted.completedAt) {
+      const dueDate = new Date(taskJustCompleted.dueDate);
+      const completedAt = new Date(taskJustCompleted.completedAt);
+      
+      // A task is on time if it's completed on or before the end of its due date
+      const onTime = !isAfter(completedAt, endOfDay(dueDate));
+
+      if (onTime) {
+        const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
+        const newTotalPoints = currentPoints + taskJustCompleted.points;
+        localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
+        toast({
+          title: "👍 Task Complete!",
+          description: `You earned ${taskJustCompleted.points} points.`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "👍 Task Complete!",
+          description: "Completed late, no points awarded for this task.",
+          variant: "default"
+        });
+      }
     }
 
-    const completedTasksCount = updatedTasks.filter(task => task.status === 'completed').length;
-    if (completedTasksCount >= 10) {
+    // Check for "First Task Completed" achievement
+    // This check relies on the state *before* this specific task was marked completed.
+    const previouslyCompletedTasksCount = tasksBeforeUpdate.filter(task => task.status === 'completed').length;
+    if (taskJustCompleted && taskJustCompleted.status === 'completed' && previouslyCompletedTasksCount === 0) {
+      unlockAchievement('first_task_completed', 'First Step Taken');
+    }
+    
+    // Check for "Task Slayer" achievement (10 tasks completed)
+    const totalCompletedTasksNow = updatedTasks.filter(task => task.status === 'completed').length;
+    if (totalCompletedTasksNow >= 10) {
       unlockAchievement('task_master_novice', 'Task Slayer');
     }
   };
@@ -279,3 +313,4 @@ export function TaskList() {
     </div>
   );
 }
+
