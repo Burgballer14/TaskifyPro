@@ -8,7 +8,7 @@ import { format, startOfWeek, addDays, eachDayOfInterval, isSameDay, endOfWeek }
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WeeklyTaskItem } from './weekly-task-item';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // Added ScrollBar
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
