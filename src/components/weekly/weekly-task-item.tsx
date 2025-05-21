@@ -19,10 +19,19 @@ export function WeeklyTaskItem({ task }: WeeklyTaskItemProps) {
     'bg-muted';
 
   return (
-    <div className="flex items-center gap-2 p-2.5 rounded-md bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className={cn("w-1.5 h-8 rounded-full", priorityBorderClass)}></div>
-      <div className="flex-grow">
-        <p className="text-sm font-medium text-foreground truncate" title={task.title}>
+    <div className={cn(
+      "flex items-center gap-3 p-2.5 rounded-lg bg-card shadow hover:shadow-lg transition-shadow duration-200",
+      task.status === 'completed' ? 'opacity-60' : ''
+    )}>
+      <div className={cn("w-1.5 h-10 rounded-full flex-shrink-0", priorityBorderClass)}></div>
+      <div className="flex-grow overflow-hidden">
+        <p 
+          className={cn(
+            "text-sm font-medium text-foreground truncate",
+            task.status === 'completed' ? 'line-through text-muted-foreground' : ''
+          )} 
+          title={task.title}
+        >
           {task.title}
         </p>
          {task.category && (
