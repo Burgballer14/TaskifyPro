@@ -19,10 +19,10 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3", className)} // className (e.g. w-full) is applied here to the root
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
+        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full", // Ensure months container takes full width
+        month: "space-y-4 w-full", // Ensure individual month container takes full width
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
@@ -32,15 +32,15 @@ function Calendar({
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
+        table: "w-full border-collapse space-y-1", // Table should take full width of 'month'
         head_row: "flex",
         head_cell:
-          "text-muted-foreground rounded-md flex-1 text-center font-normal text-[0.8rem]", // Changed: w-9 to flex-1, ensured text-center
+          "text-muted-foreground rounded-md flex-1 text-center font-normal text-[0.8rem]", // Use flex-1 for flexible width
         row: "flex w-full mt-2",
-        cell: "h-9 flex-1 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20", // Changed: w-9 to flex-1
+        cell: "h-9 flex-1 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20", // Use flex-1
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-full p-0 font-normal aria-selected:opacity-100" // Changed: w-9 to w-full
+          "h-9 w-full p-0 font-normal aria-selected:opacity-100" // Day button takes full width of its cell
         ),
         day_range_end: "day-range-end",
         day_selected:
@@ -69,3 +69,4 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
+
