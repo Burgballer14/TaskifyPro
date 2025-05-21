@@ -35,7 +35,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { streak, isLoadingStreak } = useDailyStreak();
   const [theme, setTheme] = React.useState<Theme>('light');
   const [isSunsetUnlocked, setIsSunsetUnlocked] = React.useState(false);
-  // These states are kept in case other global UI elements depend on pet status later
   const [isDoggoUnlocked, setIsDoggoUnlocked] = React.useState(false);
   const [selectedPet, setSelectedPet] = React.useState<Pet>(null);
   const [mounted, setMounted] = React.useState(false);
@@ -56,7 +55,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (doggoUnlockedStatus && storedSelectedPet) {
       setSelectedPet(storedSelectedPet);
     } else if (doggoUnlockedStatus && !storedSelectedPet) {
-      setSelectedPet('doggo');
+      setSelectedPet('doggo'); // Default to doggo if unlocked but none selected
       localStorage.setItem(SELECTED_PET_KEY, 'doggo');
     } else {
       setSelectedPet(null);
@@ -114,7 +113,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Check on mount
+    // Check on mount to ensure consistency if changed in another tab
     const initialSunsetUnlocked = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
     if (initialSunsetUnlocked !== isSunsetUnlocked) setIsSunsetUnlocked(initialSunsetUnlocked);
     
@@ -128,7 +127,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isSunsetUnlocked, isDoggoUnlocked, selectedPet]);
+  }, [isSunsetUnlocked, isDoggoUnlocked, selectedPet]); // Dependencies to re-check if state changes internally
 
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -146,10 +145,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
+        {/* Consistent loading spinner, e.g., Flame or Loader2 */}
         <Flame className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
+  
+  const hasNewStoreItems = !isDoggoUnlocked || !isSunsetUnlocked;
 
   return (
     <SidebarProvider defaultOpen>
@@ -166,8 +168,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent className="p-4">
-          <SidebarNav />
-           {/* Pet Assistant Display Area has been REMOVED from here */}
+          <SidebarNav hasNewStoreItems={hasNewStoreItems} />
         </SidebarContent>
         <SidebarFooter className="p-4 border-t border-sidebar-border mt-auto">
           <div className="flex flex-col gap-2">
@@ -222,10 +223,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Select>
             </div>
             <Avatar className="h-8 w-8">
-              <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person avatar" />
+              <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person avatar"/>
               <AvatarFallback>TP</AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium">User Name</span>
+            <span className="text-sm font-medium">User Name</span> {/* Replace with actual user name if available */}
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
