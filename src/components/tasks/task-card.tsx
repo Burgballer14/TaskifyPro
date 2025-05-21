@@ -40,7 +40,7 @@ export function TaskCard({ task }: TaskCardProps) {
         {task.description}
       </p>
       <div className="border-t border-border/50 pt-4">
-        <div className="flex justify-between items-center text-xs text-muted-foreground">
+        <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
           <div className="flex items-center gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5" />
             <span>{format(task.dueDate, 'MMM dd, yyyy')}</span>
@@ -50,9 +50,15 @@ export function TaskCard({ task }: TaskCardProps) {
             <span>{task.category}</span>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <statusInfo.icon className={cn("h-4 w-4", statusInfo.color, statusInfo.iconClassName)} />
-          <span className={cn("text-xs font-medium", statusInfo.color)}>{statusInfo.label}</span>
+        <div className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+          statusInfo.color, // Applies text color like text-primary, text-green-500, etc.
+          task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
+          task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
+          'bg-muted' // For 'todo', text-muted-foreground is applied by statusInfo.color
+        )}>
+          <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} /> {/* Color inherited */}
+          <span>{statusInfo.label}</span> {/* Color inherited */}
         </div>
       </div>
     </div>
