@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, Flame, Sun, Moon, Palette } from "lucide-react"
+import { LogOut, Settings, Flame, Sun, Moon, Palette, Sparkles } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useDailyStreak } from "@/hooks/useDailyStreak";
