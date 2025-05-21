@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
-import { PlusCircle, Search } from 'lucide-react';
+import { PlusCircle, Search, Pencil } from 'lucide-react';
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -39,7 +39,8 @@ export function TaskList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false); // Renamed from isNewTaskDialogOpen
+  const [editingTask, setEditingTask] = useState<Task | null>(null); // For storing task to edit
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -74,9 +75,9 @@ export function TaskList() {
         valA = statusOrder[a.status];
         valB = statusOrder[b.status];
       } else if (sortKey === 'dueDate') {
-        valA = new Date(a.dueDate).getTime(); // Ensure comparison on actual Date objects
+        valA = new Date(a.dueDate).getTime(); 
         valB = new Date(b.dueDate).getTime();
-      } else { // title
+      } else { 
         valA = a.title.toLowerCase();
         valB = b.title.toLowerCase();
       }
@@ -93,9 +94,27 @@ export function TaskList() {
     setSortOrder(order);
   };
 
+  const handleOpenCreateDialog = () => {
+    setEditingTask(null);
+    setIsTaskFormOpen(true);
+  };
+
+  const handleOpenEditDialog = (taskId: string) => {
+    const taskToEdit = tasks.find(task => task.id === taskId);
+    if (taskToEdit) {
+      setEditingTask(taskToEdit);
+      setIsTaskFormOpen(true);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setIsTaskFormOpen(false);
+    setEditingTask(null);
+  };
+
   const handleCreateTask = (data: TaskFormData) => {
     const newTask: Task = {
-      id: Date.now().toString(), // Simple ID generation
+      id: Date.now().toString(),
       title: data.title,
       description: data.description || '',
       dueDate: data.dueDate,
@@ -106,8 +125,29 @@ export function TaskList() {
       points: assignPoints(data.priority),
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
-    setIsNewTaskDialogOpen(false);
+    handleCloseDialog();
   };
+
+  const handleUpdateTask = (data: TaskFormData) => {
+    if (!editingTask) return;
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === editingTask.id
+          ? { 
+              ...task, 
+              ...data, 
+              points: assignPoints(data.priority), // Recalculate points if priority changed
+              // Retain original createdAt, completedAt if not part of TaskFormData
+              createdAt: task.createdAt, 
+              completedAt: task.completedAt,
+              status: task.status // status is not part of TaskFormData, keep existing
+            }
+          : task
+      )
+    );
+    handleCloseDialog();
+  };
+
 
   const handleCompleteTask = (taskId: string) => {
     setTasks(prevTasks =>
@@ -120,10 +160,9 @@ export function TaskList() {
   };
   
   if (!isMounted) {
-     // You can return a loading spinner or null here
     return (
       <div className="flex h-[calc(100vh-theme(spacing.48))] w-full items-center justify-center p-6">
-        <PlusCircle className="h-12 w-12 animate-spin text-primary" /> {/* Example Loader */}
+        <PlusCircle className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -155,29 +194,43 @@ export function TaskList() {
             <SelectItem value="title-desc">Title (Z-A)</SelectItem>
           </SelectContent>
         </Select>
-        <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Create Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">Create New Task</DialogTitle>
-            </DialogHeader>
-            <NewTaskForm 
-              onSubmit={handleCreateTask} 
-              onDialogClose={() => setIsNewTaskDialogOpen(false)} 
-            />
-          </DialogContent>
-        </Dialog>
+        <Button className="w-full sm:w-auto" onClick={handleOpenCreateDialog}>
+          <PlusCircle className="mr-2 h-5 w-5" />
+          Create Task
+        </Button>
       </div>
+
+      <Dialog open={isTaskFormOpen} onOpenChange={(isOpen) => { if (!isOpen) handleCloseDialog(); else setIsTaskFormOpen(true);}}>
+        <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {editingTask ? 'Edit Task' : 'Create New Task'}
+            </DialogTitle>
+          </DialogHeader>
+          <NewTaskForm 
+            onSubmit={editingTask ? handleUpdateTask : handleCreateTask} 
+            onDialogClose={handleCloseDialog}
+            initialData={editingTask ? {
+              title: editingTask.title,
+              description: editingTask.description,
+              dueDate: editingTask.dueDate,
+              priority: editingTask.priority,
+              category: editingTask.category,
+            } : {}}
+            isEditing={!!editingTask}
+          />
+        </DialogContent>
+      </Dialog>
 
       {filteredAndSortedTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedTasks.map((task) => (
-            <TaskCard key={task.id} task={task} onCompleteTask={handleCompleteTask} />
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              onCompleteTask={handleCompleteTask} 
+              onEditTask={handleOpenEditDialog} // Pass edit handler
+            />
           ))}
         </div>
       ) : (

@@ -2,11 +2,12 @@
 "use client";
 
 import type * as React from "react";
+import { useEffect } from "react"; // Import useEffect
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, PlusCircle } from "lucide-react";
+import { CalendarIcon, PlusCircle, Edit3 } from "lucide-react"; // Added Edit3
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/types";
+// Task type not needed here directly, TaskFormData covers form fields
 
 const taskFormSchema = z.object({
   title: z.string().min(3, {
@@ -55,20 +56,33 @@ export type TaskFormData = z.infer<typeof taskFormSchema>;
 interface NewTaskFormProps {
   onSubmit: (data: TaskFormData) => void;
   onDialogClose: () => void;
-  initialData?: Partial<TaskFormData>; // For potential edit functionality later
+  initialData?: Partial<TaskFormData>; 
+  isEditing?: boolean; // To explicitly know if it's edit mode
 }
 
-export function NewTaskForm({ onSubmit, onDialogClose, initialData }: NewTaskFormProps) {
+export function NewTaskForm({ onSubmit, onDialogClose, initialData = {}, isEditing = false }: NewTaskFormProps) {
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
-    defaultValues: {
-      title: initialData?.title || "",
-      description: initialData?.description || "",
-      dueDate: initialData?.dueDate,
-      priority: initialData?.priority || "medium",
-      category: initialData?.category || "",
+    defaultValues: { // Set defaultValues here to ensure reactivity
+      title: initialData.title || "",
+      description: initialData.description || "",
+      dueDate: initialData.dueDate,
+      priority: initialData.priority || "medium",
+      category: initialData.category || "",
     },
   });
+
+  // Reset form when initialData changes (e.g., when opening dialog for different tasks)
+  useEffect(() => {
+    form.reset({
+      title: initialData.title || "",
+      description: initialData.description || "",
+      dueDate: initialData.dueDate, // This can be undefined if not set
+      priority: initialData.priority || "medium",
+      category: initialData.category || "",
+    });
+  }, [initialData, form.reset, form]);
+
 
   function handleFormSubmit(data: TaskFormData) {
     onSubmit(data);
@@ -141,7 +155,7 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData }: NewTaskFor
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < new Date(new Date().setHours(0,0,0,0)) // Disable past dates
+                        !isEditing && date < new Date(new Date().setHours(0,0,0,0)) // Disable past dates only for new tasks
                       }
                       initialFocus
                     />
@@ -161,6 +175,7 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData }: NewTaskFor
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  value={field.value} // Ensure value is controlled
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -201,7 +216,12 @@ export function NewTaskForm({ onSubmit, onDialogClose, initialData }: NewTaskFor
             Cancel
           </Button>
           <Button type="submit">
-            <PlusCircle className="mr-2 h-4 w-4" /> Save Task
+            {isEditing ? (
+              <Edit3 className="mr-2 h-4 w-4" />
+            ) : (
+              <PlusCircle className="mr-2 h-4 w-4" />
+            )}
+            {isEditing ? 'Update Task' : 'Save Task'}
           </Button>
         </div>
       </form>
