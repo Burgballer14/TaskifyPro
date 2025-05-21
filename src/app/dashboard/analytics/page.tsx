@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { AnalyticsOverview } from '@/components/analytics/analytics-overview';
 import { PageHeader } from '@/components/page-header';
 import { loadTasksFromLocalStorage } from '@/lib/task-storage';
-import type { Task } from '@/types';
+import type { Task, UnlockedAchievements, UserAchievementStatus } from '@/types';
 import { generateDailySummary, type DailySummaryInput, type DailySummaryOutput } from '@/ai/flows/daily-summary-flow';
 import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval, isBefore, endOfDay } from 'date-fns';
 import { ThemeUnlockCard } from '@/components/analytics/theme-unlock-card';
@@ -31,24 +31,38 @@ export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const { toast } = useToast();
 
-  const unlockAchievement = (achievementId: string, achievementTitle: string) => {
+  // Simplified unlockAchievement for this page, point awarding is handled by individual unlock flows
+  const unlockAchievement = (achievementId: string, achievementTitle: string, pointsToAward: number) => {
     if (typeof window === 'undefined') return;
-    const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
-    let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
     
-    if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
-      achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
-      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
-      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+    const achievementToUnlock = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    if (!achievementToUnlock) return;
 
-      const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
+    let newUnlock = false;
+
+    // Only for single-stage achievements like "Point Collector"
+    if (!achievementToUnlock.stages && !currentStatus.unlocked) {
+        currentStatus.unlocked = true;
+        currentStatus.unlockDate = new Date().toISOString();
+        newUnlock = true;
+    }
+    
+    if (newUnlock) {
+      userAchievements[achievementId] = currentStatus;
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(userAchievements));
+      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(userAchievements) }));
+
       let pointsAwardedMessage = "";
-      if (achievement && achievement.rewardPoints && achievement.rewardPoints > 0) {
+      if (pointsToAward > 0) {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
-        const newTotalPoints = currentPoints + achievement.rewardPoints;
+        const newTotalPoints = currentPoints + pointsToAward;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        // setUserPoints state would be needed if this page displayed total points directly
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
-        pointsAwardedMessage = ` (+${achievement.rewardPoints} Points!)`;
+        pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
       }
 
       toast({
@@ -66,25 +80,41 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading) return; 
+    if (isLoading || !tasks.length) { // Ensure tasks are loaded before processing
+      if (!isLoading && !tasks.length) { // Handle case with no tasks
+        setAnalyticsData({
+          userName: "User",
+          dailyScore: 0,
+          pointsThisWeek: 0,
+          totalActiveTasks: 0,
+          tasksCompletedThisWeekCount: 0,
+          overdueTasksCount: 0,
+        });
+        setSummaryOutput({
+            personalizedSummary: `Welcome, User! Ready to start your day? Add some tasks!`,
+            dailyScoreBlurb: "Today's Score",
+        });
+      }
+      return;
+    }
 
     const userName = "User"; 
     const today = startOfToday();
 
     const tasksCompletedTodayList = tasks.filter(
-      (task) => task.status === 'completed' && isDateToday(task.completedAt)
+      (task) => task.status === 'completed' && task.completedAt && isSameDay(new Date(task.completedAt), today)
     );
 
     const calculatedDailyScore = tasksCompletedTodayList.reduce((sum, task) => {
       const completedOnTime = task.completedAt && task.dueDate && 
-                             (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
+                             (isBefore(new Date(task.completedAt), endOfDay(new Date(task.dueDate))) || isSameDay(new Date(task.completedAt), new Date(task.dueDate)));
       const awardedPoints = completedOnTime ? (task.points || 0) : 0;
       return sum + awardedPoints;
     }, 0);
     const dailyScore = Math.min(calculatedDailyScore, DAILY_POINT_CAP); 
 
     const tasksOpenToday = tasks.filter(
-      (task) => task.status !== 'completed' && isDateToday(task.dueDate)
+      (task) => task.status !== 'completed' && task.dueDate && isSameDay(new Date(task.dueDate), today)
     );
 
     const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -94,12 +124,12 @@ export default function AnalyticsPage() {
       (task) =>
         task.status === 'completed' &&
         task.completedAt &&
-        isWithinInterval(task.completedAt, { start: weekStart, end: weekEnd })
+        isWithinInterval(new Date(task.completedAt), { start: weekStart, end: weekEnd })
     );
 
     const calculatedPointsThisWeek = tasksCompletedThisWeekList.reduce((sum, task) => {
       const completedOnTime = task.completedAt && task.dueDate && 
-                             (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
+                             (isBefore(new Date(task.completedAt), endOfDay(new Date(task.dueDate))) || isSameDay(new Date(task.completedAt), new Date(task.dueDate)));
       const awardedPoints = completedOnTime ? (task.points || 0) : 0;
       return sum + awardedPoints;
     }, 0);
@@ -108,7 +138,7 @@ export default function AnalyticsPage() {
     const totalActiveTasks = tasks.filter(task => task.status === 'todo' || task.status === 'inProgress').length;
     
     const overdueTasksCount = tasks.filter(
-      task => task.status !== 'completed' && task.dueDate && isBefore(task.dueDate, today)
+      task => task.status !== 'completed' && task.dueDate && isBefore(new Date(task.dueDate), today)
     ).length;
 
     setAnalyticsData({
@@ -120,9 +150,9 @@ export default function AnalyticsPage() {
       overdueTasksCount,
     });
 
-    // Check for "Point Collector" achievement
-    if (pointsThisWeek >= 1000) {
-        unlockAchievement('point_collector', 'Point Hoarder');
+    const pointCollectorAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'point_collector');
+    if (pointCollectorAchievement && pointsThisWeek >= 1000) { // Assuming 1000 points is the criteria for Point Collector
+        unlockAchievement('point_collector', pointCollectorAchievement.title, pointCollectorAchievement.rewardPoints || 0);
     }
 
     const summaryInput: DailySummaryInput = {

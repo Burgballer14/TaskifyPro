@@ -4,46 +4,48 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { AchievementCard } from '@/components/achievements/achievement-card';
-import { ACHIEVEMENTS_LIST, ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data';
-import type { Achievement } from '@/types';
+import { ACHIEVEMENTS_LIST, ACHIEVEMENTS_STORAGE_KEY, COMPLETED_TASKS_COUNT_KEY } from '@/lib/achievements-data';
+import type { Achievement, UnlockedAchievements, UserAchievementStatus } from '@/types';
 import { Loader2 } from 'lucide-react';
 
-interface UnlockedAchievements {
-  [achievementId: string]: { unlocked: boolean; unlockDate?: string };
-}
-
 export default function AchievementsPage() {
-  const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievements>({});
+  const [userAchievements, setUserAchievements] = useState<UnlockedAchievements>({});
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Load achievements status
       const storedData = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
       if (storedData) {
         try {
-          setUnlockedAchievements(JSON.parse(storedData));
+          setUserAchievements(JSON.parse(storedData));
         } catch (e) {
           console.error("Error parsing achievements from localStorage", e);
-          // Initialize if parsing fails
           localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify({}));
         }
       } else {
-        // Initialize if not present
         localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify({}));
       }
+
+      // Load completed tasks count for progress display
+      const storedTasksCount = localStorage.getItem(COMPLETED_TASKS_COUNT_KEY);
+      setCompletedTasksCount(storedTasksCount ? parseInt(storedTasksCount, 10) : 0);
     }
     setIsLoading(false);
   }, []);
   
-  // Listen for storage changes to update UI dynamically if an achievement is unlocked elsewhere
    useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === ACHIEVEMENTS_STORAGE_KEY && event.newValue) {
         try {
-          setUnlockedAchievements(JSON.parse(event.newValue));
+          setUserAchievements(JSON.parse(event.newValue));
         } catch (e) {
           console.error("Error parsing achievements from storage event", e);
         }
+      }
+      if (event.key === COMPLETED_TASKS_COUNT_KEY && event.newValue) {
+        setCompletedTasksCount(parseInt(event.newValue, 10));
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -73,13 +75,13 @@ export default function AchievementsPage() {
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {ACHIEVEMENTS_LIST.map((achievement) => {
-          const status = unlockedAchievements[achievement.id] || { unlocked: false };
+          const status: UserAchievementStatus = userAchievements[achievement.id] || { unlocked: false, currentStage: 0 };
           return (
             <AchievementCard
               key={achievement.id}
               achievement={achievement}
-              isUnlocked={status.unlocked}
-              unlockDate={status.unlockDate ? new Date(status.unlockDate) : undefined}
+              status={status}
+              completedTasksCount={achievement.category === 'tasks' ? completedTasksCount : undefined}
             />
           );
         })}

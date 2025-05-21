@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Paintbrush, Sparkles, CheckCircle2, Dog, PawPrint, Wallet } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
-import type { Achievement } from '@/types';
+import type { Achievement, UnlockedAchievements, UserAchievementStatus } from '@/types';
 
 
 const SUNSET_THEME_KEY = 'taskifyProSunsetThemeUnlocked';
@@ -49,29 +49,42 @@ export function ThemeUnlockCard() {
     setIsLoading(false);
   }, []);
 
-  const unlockAchievement = (achievementId: string, achievementTitle: string) => {
-    const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
-    let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+  const unlockAchievement = (achievementId: string) => {
+    if (typeof window === 'undefined') return;
+    const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
     
-    if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
-      achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
-      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
-      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+    const achievementToUnlock = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    if (!achievementToUnlock) return;
 
-      const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
+    let newUnlock = false;
+
+    // Simplified for single-stage achievements from store
+    if (!currentStatus.unlocked) {
+        currentStatus.unlocked = true;
+        currentStatus.unlockDate = new Date().toISOString();
+        newUnlock = true;
+    }
+
+    if (newUnlock) {
+      userAchievements[achievementId] = currentStatus;
+      localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(userAchievements));
+      window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(userAchievements) }));
+
       let pointsAwardedMessage = "";
-      if (achievement && achievement.rewardPoints && achievement.rewardPoints > 0) {
-        const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || '0', 10);
-        const newTotalPoints = currentPoints + achievement.rewardPoints;
+      if (achievementToUnlock.rewardPoints && achievementToUnlock.rewardPoints > 0) {
+        const currentTotalPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || '0', 10);
+        const newTotalPoints = currentTotalPoints + achievementToUnlock.rewardPoints;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
-        setUserPoints(newTotalPoints); // Update local state for immediate reflection
+        setUserPoints(newTotalPoints); 
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
-        pointsAwardedMessage = ` (+${achievement.rewardPoints} Points!)`;
+        pointsAwardedMessage = ` (+${achievementToUnlock.rewardPoints} Points!)`;
       }
 
       toast({
         title: "🏆 Achievement Unlocked!",
-        description: `${achievementTitle}${pointsAwardedMessage}`,
+        description: `${achievementToUnlock.title}${pointsAwardedMessage}`,
         variant: "default",
       });
     }
@@ -101,7 +114,7 @@ export function ThemeUnlockCard() {
     window.dispatchEvent(new StorageEvent('storage', { key: SUNSET_THEME_KEY, newValue: 'true' }));
     window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
     
-    unlockAchievement('style_starter', 'A Splash of Color');
+    unlockAchievement('style_starter');
   };
 
   const handleUnlockDoggo = () => {
@@ -131,7 +144,7 @@ export function ThemeUnlockCard() {
     window.dispatchEvent(new StorageEvent('storage', { key: SELECTED_PET_KEY, newValue: 'doggo' }));
     window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newPoints.toString() }));
 
-    unlockAchievement('pet_pal', 'Furry Friend');
+    unlockAchievement('pet_pal');
   };
 
   const handleSelectDoggo = () => {
