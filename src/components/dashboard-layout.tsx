@@ -35,6 +35,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { streak, isLoadingStreak } = useDailyStreak();
   const [theme, setTheme] = React.useState<Theme>('light');
   const [isSunsetUnlocked, setIsSunsetUnlocked] = React.useState(false);
+  // These states are kept in case other global UI elements depend on pet status later
   const [isDoggoUnlocked, setIsDoggoUnlocked] = React.useState(false);
   const [selectedPet, setSelectedPet] = React.useState<Pet>(null);
   const [mounted, setMounted] = React.useState(false);
@@ -51,10 +52,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const doggoUnlockedStatus = localStorage.getItem(DOGGO_PET_UNLOCKED_KEY) === 'true';
     setIsDoggoUnlocked(doggoUnlockedStatus);
     const storedSelectedPet = localStorage.getItem(SELECTED_PET_KEY) as Pet | null;
+    
     if (doggoUnlockedStatus && storedSelectedPet) {
       setSelectedPet(storedSelectedPet);
     } else if (doggoUnlockedStatus && !storedSelectedPet) {
-      // If doggo is unlocked but no pet selected, make doggo the default
       setSelectedPet('doggo');
       localStorage.setItem(SELECTED_PET_KEY, 'doggo');
     } else {
@@ -166,24 +167,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent className="p-4">
           <SidebarNav />
-           {/* Pet Assistant Display Area START */}
-            {mounted && isDoggoUnlocked && selectedPet === 'doggo' && (
-              <div className="mt-6 p-4 rounded-lg bg-sidebar-accent/30 border border-sidebar-border/50 text-center shadow-md">
-                <Dog className="h-20 w-20 mx-auto text-primary mb-2 animate-bounce [animation-duration:2s]" />
-                <p className="text-base font-semibold text-sidebar-foreground">Doggo is cheering you on!</p>
-                <p className="text-xs text-muted-foreground">Keep up the great work!</p>
-              </div>
-            )}
-            {mounted && !isDoggoUnlocked && (
-              <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border/50 text-center">
-                <div className="w-20 h-20 mx-auto rounded-full bg-background flex items-center justify-center mb-2 shadow-inner">
-                  <PawPrint className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium text-foreground">Want a Companion?</p>
-                <p className="text-xs text-muted-foreground">Unlock a pet from the Analytics page!</p>
-              </div>
-            )}
-           {/* Pet Assistant Display Area END */}
+           {/* Pet Assistant Display Area has been REMOVED from here */}
         </SidebarContent>
         <SidebarFooter className="p-4 border-t border-sidebar-border mt-auto">
           <div className="flex flex-col gap-2">
