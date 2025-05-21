@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -51,9 +52,7 @@ export function CalendarView() {
   const modifiersStyles = {
     hasTasks: {
       fontWeight: 'bold',
-      color: 'hsl(var(--primary))',
-      textDecoration: 'underline',
-      textUnderlineOffset: '0.2em',
+      color: 'hsl(var(--primary))', // Day number will be primary color if it has tasks
     }
   };
 
@@ -81,13 +80,15 @@ export function CalendarView() {
               classNames={{
                 day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
                 day_today: "bg-accent text-accent-foreground",
+                // Ensure day_outside text color is distinct if it also hasTasks
+                day_outside: "text-muted-foreground/70 aria-selected:bg-accent/50 aria-selected:text-muted-foreground", 
               }}
             />
           </CardContent>
         </Card>
       </div>
       <div className="lg:col-span-1">
-        <Card className="shadow-lg h-full">
+        <Card className="shadow-lg h-full flex flex-col">
           <CardHeader>
             <CardTitle>
               Tasks for {selectedDate ? format(selectedDate, 'MMMM dd, yyyy') : 'Selected Date'}
@@ -98,9 +99,9 @@ export function CalendarView() {
                 : "No tasks due on this day."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-grow overflow-hidden">
             {tasksForSelectedDate.length > 0 ? (
-              <ScrollArea className="h-[300px] pr-3"> {/* Adjust height as needed */}
+              <ScrollArea className="h-full pr-3"> 
                 <ul className="space-y-3">
                   {tasksForSelectedDate.map(task => {
                     const priorityInfo = TASK_PRIORITY_MAP[task.priority];
@@ -113,25 +114,25 @@ export function CalendarView() {
                           {/* Priority Badge */}
                           <div className={cn(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
-                            priorityInfo.color, // Applies text color like text-red-500
+                            priorityInfo.color, 
                             priorityInfo.color === 'text-red-500' ? 'bg-red-500/10 dark:bg-red-500/20' :
                             priorityInfo.color === 'text-yellow-500' ? 'bg-yellow-500/10 dark:bg-yellow-500/20' : 
                             'bg-green-500/10 dark:bg-green-500/20'
                           )}>
-                            <priorityInfo.icon className={cn("h-3.5 w-3.5")} /> {/* Color inherited */}
-                            <span>{priorityInfo.label}</span> {/* Color inherited */}
+                            <priorityInfo.icon className={cn("h-3.5 w-3.5")} /> 
+                            <span>{priorityInfo.label}</span> 
                           </div>
 
                           {/* Status Badge */}
                           <div className={cn(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
-                            statusInfo.color, // Applies text color like text-primary, text-green-500, etc.
+                            statusInfo.color, 
                             task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
                             task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
-                            'bg-muted' // For 'todo', text-muted-foreground is applied by statusInfo.color
+                            'bg-muted' 
                           )}>
-                            <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} /> {/* Color inherited, iconClassName for spin */}
-                            <span>{statusInfo.label}</span> {/* Color inherited */}
+                            <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} /> 
+                            <span>{statusInfo.label}</span> 
                           </div>
                         </div>
                       </li>
@@ -150,3 +151,4 @@ export function CalendarView() {
     </div>
   );
 }
+
