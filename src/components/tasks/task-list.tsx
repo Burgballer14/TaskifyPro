@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
 import { PlusCircle, Search } from 'lucide-react';
-import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, COMPLETED_TASKS_COUNT_KEY } from '@/lib/achievements-data';
+import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, COMPLETED_TASKS_COUNT_KEY, checkAndUnlockPointCollectorAchievement } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
 import { isAfter, endOfDay } from 'date-fns';
 
@@ -44,8 +44,6 @@ export function TaskList() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  // userPoints state is not directly used for display here but for consistency in unlockAchievement
-  const [userPoints, setUserPoints] = useState(INITIAL_USER_POINTS); 
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,11 +51,12 @@ export function TaskList() {
     setTasks(loadTasksFromLocalStorage());
     if (typeof window !== 'undefined') {
       const storedPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
-      if (storedPoints) {
-        setUserPoints(parseInt(storedPoints, 10));
-      } else {
+      if (storedPoints === null) {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS.toString());
       }
+      // Initial check for point collector achievement on load
+      const currentTotalPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
+      checkAndUnlockPointCollectorAchievement(currentTotalPoints, unlockAchievement);
     }
   }, []);
 
@@ -136,15 +135,15 @@ export function TaskList() {
     const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
     let newStageUnlocked = false;
 
-    if (achievement.stages && stageNumber !== undefined) { // Multi-stage achievement
+    if (achievement.stages && stageNumber !== undefined) { 
       if (!currentStatus.currentStage || currentStatus.currentStage < stageNumber) {
         currentStatus.currentStage = stageNumber;
         if (!currentStatus.stageUnlockDates) currentStatus.stageUnlockDates = {};
         currentStatus.stageUnlockDates[stageNumber] = new Date().toISOString();
-        currentStatus.unlockDate = new Date().toISOString(); // Update main unlock date to latest stage unlock
+        currentStatus.unlockDate = new Date().toISOString(); 
         newStageUnlocked = true;
       }
-    } else { // Single-stage achievement
+    } else { 
       if (!currentStatus.unlocked) {
         currentStatus.unlocked = true;
         currentStatus.unlockDate = new Date().toISOString();
@@ -162,9 +161,10 @@ export function TaskList() {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
         const newTotalPoints = currentPoints + pointsToAward;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
-        setUserPoints(newTotalPoints); 
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
+        // Check for Point Collector achievement after awarding points
+        checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
       }
       
       const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
@@ -221,26 +221,31 @@ export function TaskList() {
     
     const taskJustCompleted = updatedTasks.find(t => t.id === taskId);
 
-    if (taskJustCompleted && tasksBeforeUpdate.find(t => t.id === taskId)?.status !== 'completed') { // Check if it was actually completed now
-      setTasks(updatedTasks); // Save tasks with new completion status
+    if (taskJustCompleted && tasksBeforeUpdate.find(t => t.id === taskId)?.status !== 'completed') {
+      setTasks(updatedTasks); 
       
-      // Award points for completing the task on time
+      let awardedTaskPoints = 0;
+      let taskCompletedOnTime = false;
+
       if (taskJustCompleted.points && taskJustCompleted.completedAt) {
         const dueDate = new Date(taskJustCompleted.dueDate);
         const completedAt = new Date(taskJustCompleted.completedAt);
-        const onTime = !isAfter(completedAt, endOfDay(dueDate));
+        taskCompletedOnTime = !isAfter(completedAt, endOfDay(dueDate));
 
-        if (onTime) {
+        if (taskCompletedOnTime) {
+          awardedTaskPoints = taskJustCompleted.points;
           const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
-          const newTotalPoints = currentPoints + taskJustCompleted.points;
+          const newTotalPoints = currentPoints + awardedTaskPoints;
           localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
-          setUserPoints(newTotalPoints);
           window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
+          
           toast({
             title: "👍 Task Complete!",
-            description: `You earned ${taskJustCompleted.points} points.`,
+            description: `You earned ${awardedTaskPoints} points.`,
             variant: "default"
           });
+          // Check for Point Collector achievement after awarding task points
+          checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
         } else {
           toast({
             title: "👍 Task Complete!",
@@ -250,19 +255,15 @@ export function TaskList() {
         }
       }
 
-      // Update completed tasks count for achievements
       const totalCompletedTasksNow = updatedTasks.filter(task => task.status === 'completed').length;
       localStorage.setItem(COMPLETED_TASKS_COUNT_KEY, totalCompletedTasksNow.toString());
       window.dispatchEvent(new StorageEvent('storage', {key: COMPLETED_TASKS_COUNT_KEY, newValue: totalCompletedTasksNow.toString()}));
 
-
-      // Check for "First Task Completed" achievement
       const firstTaskAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'first_task_completed');
       if (firstTaskAchievement) {
          unlockAchievement(firstTaskAchievement.id, firstTaskAchievement.title, firstTaskAchievement.rewardPoints || 0);
       }
       
-      // Check for "Task Slayer" achievement (multi-stage)
       const taskSlayerAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'task_master_novice');
       if (taskSlayerAchievement && taskSlayerAchievement.stages) {
         const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);

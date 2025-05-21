@@ -10,7 +10,7 @@ import { generateDailySummary, type DailySummaryInput, type DailySummaryOutput }
 import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval, isBefore, endOfDay } from 'date-fns';
 import { ThemeUnlockCard } from '@/components/analytics/theme-unlock-card';
 import { Loader2 } from 'lucide-react';
-import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
+import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, checkAndUnlockPointCollectorAchievement } from '@/lib/achievements-data';
 import { useToast } from '@/hooks/use-toast';
 
 function isDateToday(date: Date | undefined): boolean {
@@ -70,6 +70,8 @@ export default function AnalyticsPage() {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
+        // After awarding points for this achievement, check Point Collector
+        checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement); // Pass this page's unlockAchievement
       }
 
       const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
@@ -158,19 +160,8 @@ export default function AnalyticsPage() {
       overdueTasksCount,
     });
 
-    const pointCollectorAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'point_collector');
-    if (pointCollectorAchievement && pointCollectorAchievement.stages) {
-      const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
-      let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
-      const pointCollectorStatus: UserAchievementStatus = userAchievements[pointCollectorAchievement.id] || { currentStage: 0 };
-
-      for (const stage of pointCollectorAchievement.stages) {
-        if ((!pointCollectorStatus.currentStage || pointCollectorStatus.currentStage < stage.stage) && pointsThisWeek >= stage.criteriaCount) {
-          unlockAchievement(pointCollectorAchievement.id, pointCollectorAchievement.title, stage.rewardPoints, stage.stage, stage.titleSuffix);
-        }
-      }
-    }
-
+    // Removed specific "point_collector" check based on pointsThisWeek,
+    // as it's now based on total lifetime points and checked elsewhere.
 
     const summaryInput: DailySummaryInput = {
       userName,
@@ -188,7 +179,7 @@ export default function AnalyticsPage() {
         });
       });
 
-  }, [tasks, isLoading, toast]); 
+  }, [tasks, isLoading, toast]); // Removed 'unlockAchievement' from deps as it's stable unless its definition changes
 
   if (isLoading || !analyticsData) {
     return (
@@ -227,4 +218,3 @@ export default function AnalyticsPage() {
     </>
   );
 }
-

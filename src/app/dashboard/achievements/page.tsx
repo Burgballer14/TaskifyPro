@@ -4,13 +4,14 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { AchievementCard } from '@/components/achievements/achievement-card';
-import { ACHIEVEMENTS_LIST, ACHIEVEMENTS_STORAGE_KEY, COMPLETED_TASKS_COUNT_KEY } from '@/lib/achievements-data';
+import { ACHIEVEMENTS_LIST, ACHIEVEMENTS_STORAGE_KEY, COMPLETED_TASKS_COUNT_KEY, USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS } from '@/lib/achievements-data';
 import type { Achievement, UnlockedAchievements, UserAchievementStatus } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 export default function AchievementsPage() {
   const [userAchievements, setUserAchievements] = useState<UnlockedAchievements>({});
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
+  const [currentUserPoints, setCurrentUserPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +32,10 @@ export default function AchievementsPage() {
       // Load completed tasks count for progress display
       const storedTasksCount = localStorage.getItem(COMPLETED_TASKS_COUNT_KEY);
       setCompletedTasksCount(storedTasksCount ? parseInt(storedTasksCount, 10) : 0);
+
+      // Load current user points for 'point_collector' progress display
+      const storedUserPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
+      setCurrentUserPoints(storedUserPoints ? parseInt(storedUserPoints, 10) : INITIAL_USER_POINTS);
     }
     setIsLoading(false);
   }, []);
@@ -46,6 +51,9 @@ export default function AchievementsPage() {
       }
       if (event.key === COMPLETED_TASKS_COUNT_KEY && event.newValue) {
         setCompletedTasksCount(parseInt(event.newValue, 10));
+      }
+      if (event.key === USER_POINTS_BALANCE_KEY && event.newValue) {
+        setCurrentUserPoints(parseInt(event.newValue, 10));
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -82,6 +90,7 @@ export default function AchievementsPage() {
               achievement={achievement}
               status={status}
               completedTasksCount={achievement.category === 'tasks' ? completedTasksCount : undefined}
+              currentUserPoints={achievement.id === 'point_collector' ? currentUserPoints : undefined}
             />
           );
         })}

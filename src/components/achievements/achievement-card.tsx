@@ -10,10 +10,11 @@ import { CheckCircle2, Lock, Star } from 'lucide-react';
 interface AchievementCardProps {
   achievement: Achievement;
   status: UserAchievementStatus;
-  completedTasksCount?: number; // For progress display on task-based achievements
+  completedTasksCount?: number;
+  currentUserPoints?: number; // For progress on point_collector
 }
 
-export function AchievementCard({ achievement, status, completedTasksCount = 0 }: AchievementCardProps) {
+export function AchievementCard({ achievement, status, completedTasksCount = 0, currentUserPoints = 0 }: AchievementCardProps) {
   const IconComponent = achievement.icon;
   const isMultiStage = !!achievement.stages && achievement.stages.length > 0;
   
@@ -23,8 +24,9 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0 }
   let displayDescription = achievement.description;
   let progressValue = 0;
   let progressMax = 0;
+  let progressLabel = "tasks"; // Default progress label
   let isFullyCompleted = false;
-  let isUnlockedOverall = false; // Is at least stage 1 unlocked or single achievement unlocked
+  let isUnlockedOverall = false;
 
   if (isMultiStage) {
     currentStageNumber = status.currentStage || 0;
@@ -39,17 +41,22 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0 }
     if (currentStageNumber < achievement.stages!.length) {
       nextStage = achievement.stages!.find(s => s.stage === currentStageNumber + 1);
       if (nextStage) {
-        if (currentStageNumber === 0) { // If not even stage 1 is unlocked
-             displayDescription = nextStage.description || achievement.description; // Show description of the first stage
+        if (currentStageNumber === 0) {
+             displayDescription = nextStage.description || achievement.description;
         }
-        // For progress bar, specific to task-based achievements for now
+        
         if (achievement.category === 'tasks' && completedTasksCount !== undefined) {
           progressValue = completedTasksCount;
           progressMax = nextStage.criteriaCount;
+          progressLabel = "tasks";
+        } else if (achievement.id === 'point_collector' && currentUserPoints !== undefined) {
+          progressValue = currentUserPoints;
+          progressMax = nextStage.criteriaCount;
+          progressLabel = "points";
         }
       }
     } else {
-      isFullyCompleted = true; // All stages completed
+      isFullyCompleted = true;
     }
   } else {
     isUnlockedOverall = !!status.unlocked;
@@ -61,11 +68,11 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0 }
   const cardBorderColor = () => {
     if (!isUnlockedOverall) return "border-border/50";
     if (isMultiStage) {
-      if (currentStageNumber === 1) return "border-yellow-600/70 dark:border-yellow-500/70"; // Bronze-like
-      if (currentStageNumber === 2) return "border-slate-400/70 dark:border-slate-300/70"; // Silver-like
-      if (currentStageNumber >= 3) return "border-amber-400/70 dark:border-amber-300/70"; // Gold-like
+      if (currentStageNumber === 1) return "border-yellow-600/70 dark:border-yellow-500/70"; 
+      if (currentStageNumber === 2) return "border-slate-400/70 dark:border-slate-300/70"; 
+      if (currentStageNumber >= 3) return "border-amber-400/70 dark:border-amber-300/70"; 
     }
-    return "border-green-500/50"; // Default for unlocked single-stage
+    return "border-green-500/50";
   };
 
   return (
@@ -99,7 +106,7 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0 }
             {isFullyCompleted ? (
               <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
             ) : isUnlockedOverall ? (
-              <Star className="h-6 w-6 text-yellow-400 shrink-0" /> // In-progress star for multi-stage
+              <Star className="h-6 w-6 text-yellow-400 shrink-0" />
             ) : (
               <Lock className="h-6 w-6 text-muted-foreground shrink-0" />
             )}
@@ -115,13 +122,13 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0 }
               <p className="text-xs font-medium text-muted-foreground mb-1">
                 Next: {achievement.title} {nextStage.titleSuffix} (Reward: {nextStage.rewardPoints} pts)
               </p>
-              {achievement.category === 'tasks' && progressMax > 0 && (
+              {(achievement.category === 'tasks' || achievement.id === 'point_collector') && progressMax > 0 && (
                  <>
                     <Progress value={(progressValue / progressMax) * 100} className="h-2"/>
-                    <p className="text-xs text-muted-foreground text-right">{progressValue}/{progressMax} tasks</p>
+                    <p className="text-xs text-muted-foreground text-right">{progressValue}/{progressMax} {progressLabel}</p>
                  </>
               )}
-               {achievement.category !== 'tasks' && (
+               {achievement.category !== 'tasks' && achievement.id !== 'point_collector' && (
                 <p className="text-xs text-muted-foreground">Criteria: {nextStage.description || `Achieve stage ${nextStage.stage}`}</p>
                )}
             </div>

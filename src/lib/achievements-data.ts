@@ -1,5 +1,5 @@
 
-import type { Achievement } from '@/types';
+import type { Achievement, UnlockedAchievements, UserAchievementStatus } from '@/types';
 import { Award, Palette, Flame, Trophy, Star, PawPrint } from 'lucide-react';
 
 export const ACHIEVEMENTS_LIST: Achievement[] = [
@@ -29,8 +29,8 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
   },
   {
     id: 'streak_beginner',
-    title: 'Consistent Starter', // Base Title
-    description: 'Log in on consecutive days to build your streak.', // Base Description
+    title: 'Consistent Starter',
+    description: 'Log in on consecutive days to build your streak.',
     icon: Flame,
     category: 'streak',
     stages: [
@@ -41,20 +41,20 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
   },
   {
     id: 'point_collector',
-    title: 'Point Hoarder', // Base Title
-    description: 'Rack up points by completing tasks on time within a single week.', // Base Description
+    title: 'Point Accumulator', // Changed title for clarity
+    description: 'Accumulate points by completing tasks and earning achievements.', // Updated base description
     icon: Star,
-    category: 'general',
+    category: 'general', // Keep as general or 'points'
     stages: [
-      { stage: 1, titleSuffix: 'Bronze', criteriaCount: 1000, rewardPoints: 100, description: "Earn 1000 points from on-time tasks in a single week." },
-      { stage: 2, titleSuffix: 'Silver', criteriaCount: 2500, rewardPoints: 150, description: "Collect 2500 points in a week to show your dedication." },
-      { stage: 3, titleSuffix: 'Gold', criteriaCount: 5000, rewardPoints: 250, description: "Master the art of productivity by earning 5000 points in one week!" },
+      { stage: 1, titleSuffix: 'Bronze', criteriaCount: 1000, rewardPoints: 100, description: "Collect a total of 1000 points." },
+      { stage: 2, titleSuffix: 'Silver', criteriaCount: 2500, rewardPoints: 150, description: "Reach a total of 2500 points." },
+      { stage: 3, titleSuffix: 'Gold', criteriaCount: 5000, rewardPoints: 250, description: "Amass a grand total of 5000 points!" },
     ],
   },
   {
     id: 'task_master_novice',
-    title: 'Task Slayer', // Base Title
-    description: 'Demonstrate your dedication by completing multiple tasks.', // Base Description
+    title: 'Task Slayer',
+    description: 'Demonstrate your dedication by completing multiple tasks.',
     icon: Trophy,
     category: 'tasks',
     stages: [
@@ -68,5 +68,39 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
 export const ACHIEVEMENTS_STORAGE_KEY = 'taskifyProAchievements';
 export const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance';
 export const INITIAL_USER_POINTS = 500;
-export const COMPLETED_TASKS_COUNT_KEY = 'taskifyProCompletedTasksCount'; // For tracking Task Slayer
+export const COMPLETED_TASKS_COUNT_KEY = 'taskifyProCompletedTasksCount';
 
+
+// Helper function to check and unlock stages for the Point Collector achievement
+export function checkAndUnlockPointCollectorAchievement(
+  currentTotalPoints: number,
+  // The unlockAchievement function specific to the calling file's context
+  unlockAchievementFunction: (achievementId: string, achievementTitle: string, pointsToAward: number, stageNumber?: number, stageTitleSuffix?: string) => void
+) {
+  if (typeof window === 'undefined') return;
+
+  const pointCollectorAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'point_collector');
+  if (!pointCollectorAchievement || !pointCollectorAchievement.stages) return;
+
+  const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+  let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
+  const pointCollectorStatus: UserAchievementStatus = userAchievements[pointCollectorAchievement.id] || { currentStage: 0 };
+
+  for (const stage of pointCollectorAchievement.stages) {
+    if ((!pointCollectorStatus.currentStage || pointCollectorStatus.currentStage < stage.stage) && currentTotalPoints >= stage.criteriaCount) {
+      // Call the passed-in unlockAchievement function to handle the actual unlocking and toast
+      unlockAchievementFunction(
+        pointCollectorAchievement.id,
+        pointCollectorAchievement.title,
+        stage.rewardPoints,
+        stage.stage,
+        stage.titleSuffix
+      );
+      // After unlocking a stage, update status for the next iteration if needed (though unlockAchievement should handle this)
+      const updatedStoredAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+      userAchievements = updatedStoredAchievementsRaw ? JSON.parse(updatedStoredAchievementsRaw) : {};
+      pointCollectorStatus.currentStage = userAchievements[pointCollectorAchievement.id]?.currentStage || pointCollectorStatus.currentStage;
+
+    }
+  }
+}

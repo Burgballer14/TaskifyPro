@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { isSameDay, subDays, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
+import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS, checkAndUnlockPointCollectorAchievement } from '@/lib/achievements-data';
 import type { UnlockedAchievements, UserAchievementStatus, Achievement } from '@/types';
 
 const LAST_LOGIN_KEY = 'taskifyProLastLogin';
@@ -34,7 +34,7 @@ export function useDailyStreak() {
         currentStatus.unlockDate = new Date().toISOString(); 
         newStageUnlocked = true;
       }
-    } else if (!achievement.stages) { // Single-stage achievement
+    } else if (!achievement.stages) { 
       if (!currentStatus.unlocked) {
         currentStatus.unlocked = true;
         currentStatus.unlockDate = new Date().toISOString();
@@ -54,6 +54,8 @@ export function useDailyStreak() {
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
+        // After awarding points for this achievement, check Point Collector
+        checkAndUnlockPointCollectorAchievement(newTotalPoints, unlockAchievement);
       }
 
       const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
@@ -92,7 +94,6 @@ export function useDailyStreak() {
       localStorage.setItem(STREAK_COUNT_KEY, updatedStreak.toString());
       setStreak(updatedStreak);
 
-      // Check for "Consistent Starter" achievement stages
       const streakAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'streak_beginner');
       if (streakAchievement && streakAchievement.stages) {
         const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
@@ -105,10 +106,12 @@ export function useDailyStreak() {
           }
         }
       }
+       // Initial check for point collector achievement on load
+       const currentTotalPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
+       checkAndUnlockPointCollectorAchievement(currentTotalPoints, unlockAchievement);
     }
     setIsLoadingStreak(false);
-  }, [toast]); // Added toast to dependency array as it's used in unlockAchievement
+  }, [toast]);
 
   return { streak, isLoadingStreak };
 }
-
