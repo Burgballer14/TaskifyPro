@@ -1,15 +1,21 @@
 
 import type { Task } from '@/types';
 import { TASK_STATUS_MAP, TASK_PRIORITY_MAP } from '@/lib/constants';
-import { CalendarIcon, TagIcon, Award, CheckSquare, Pencil } from 'lucide-react'; // Added Pencil
+import { CalendarIcon, TagIcon, Award, CheckSquare, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TaskCardProps {
   task: Task;
   onCompleteTask: (taskId: string) => void;
-  onEditTask: (taskId: string) => void; // New prop for editing
+  onEditTask: (taskId: string) => void;
 }
 
 export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
@@ -22,11 +28,17 @@ export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
     task.priority === 'low' ? 'border-t-green-400 dark:border-t-green-500' :
     'border-t-transparent';
 
+  const descriptionElement = (
+    <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden">
+      {task.description || "No description."}
+    </p>
+  );
+
   return (
     <div className={cn(
       "bg-card text-card-foreground bg-opacity-80 dark:bg-opacity-80 backdrop-blur-sm border rounded-xl shadow-lg p-4 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-0.5 flex flex-col justify-between",
-      "border-t-[5px]", 
-      priorityBorderClass  
+      "border-t-[5px]",
+      priorityBorderClass
     )}>
       <div>
         <div className="flex justify-between items-start mb-3">
@@ -40,9 +52,22 @@ export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
             <span className={priorityInfo.color}>{priorityInfo.label}</span>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mb-4 h-10 overflow-hidden">
-          {task.description}
-        </p>
+
+        {task.description && task.description.trim() !== "" ? (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {descriptionElement}
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start" className="max-w-xs break-words">
+                <p className="text-sm">{task.description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          descriptionElement
+        )}
+
         <div className="border-t border-border/50 pt-4">
           <div className="flex justify-between items-center text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
@@ -63,32 +88,32 @@ export function TaskCard({ task, onCompleteTask, onEditTask }: TaskCardProps) {
           )}
 
           <div className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3", 
-            statusInfo.color, 
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mt-3",
+            statusInfo.color,
             task.status === 'completed' ? 'bg-green-500/10 dark:bg-green-500/20' :
             task.status === 'inProgress' ? 'bg-primary/10 dark:bg-primary/20' :
-            'bg-muted' 
+            'bg-muted'
           )}>
             <statusInfo.icon className={cn("h-3.5 w-3.5", statusInfo.iconClassName)} />
             <span>{statusInfo.label}</span>
           </div>
         </div>
       </div>
-      
+
       {task.status !== 'completed' && (
         <div className="mt-4 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="flex-1"
             onClick={() => onEditTask(task.id)}
           >
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </Button>
-          <Button 
-            variant="default" // Changed to default for primary action
-            size="sm" 
+          <Button
+            variant="default"
+            size="sm"
             className="flex-1"
             onClick={() => onCompleteTask(task.id)}
           >
