@@ -5,6 +5,7 @@ import { DUMMY_TASKS } from '@/lib/constants';
 import type { Task } from '@/types';
 import { generateDailySummary, type DailySummaryInput, type DailySummaryOutput } from '@/ai/flows/daily-summary-flow';
 import { isSameDay, startOfToday, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { ThemeUnlockCard } from '@/components/analytics/theme-unlock-card'; // Import the new card
 
 function isDateToday(date: Date | undefined): boolean {
   if (!date) return false;
@@ -64,13 +65,16 @@ export default async function AnalyticsPage() {
         title="Task Analytics"
         description="Gain insights into your productivity and task management with a personalized touch."
       />
-      <AnalyticsOverview 
-        userName={userName}
-        summaryOutput={summaryOutput}
-        dailyScore={dailyScore}
-        pointsThisWeek={pointsThisWeek}
-        weeklyPointGoal={WEEKLY_POINT_GOAL}
-      />
+      <div className="space-y-8"> {/* Added space-y for better separation */}
+        <AnalyticsOverview 
+          userName={userName}
+          summaryOutput={summaryOutput}
+          dailyScore={dailyScore}
+          pointsThisWeek={pointsThisWeek}
+          weeklyPointGoal={WEEKLY_POINT_GOAL}
+        />
+        <ThemeUnlockCard /> {/* Add the new theme unlock card here */}
+      </div>
     </>
   );
 }

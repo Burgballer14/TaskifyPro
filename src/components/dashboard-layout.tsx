@@ -14,54 +14,111 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { LogOut, Settings, Flame, Sun, Moon } from "lucide-react"
+import { LogOut, Settings, Flame, Sun, Moon, Palette } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useDailyStreak } from "@/hooks/useDailyStreak";
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+
+const THEME_KEY = 'taskifyProTheme';
+const SUNSET_THEME_UNLOCKED_KEY = 'taskifyProSunsetThemeUnlocked';
+
+type Theme = 'light' | 'dark' | 'sunset-glow';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [currentYear, setCurrentYear] = React.useState<number | null>(null);
   const { streak, isLoadingStreak } = useDailyStreak();
-  const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = React.useState<Theme>('light');
+  const [isSunsetUnlocked, setIsSunsetUnlocked] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false); // To avoid hydration mismatch
+  const { toast } = useToast();
+
 
   React.useEffect(() => {
+    setMounted(true);
     setCurrentYear(new Date().getFullYear());
-    const storedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+
+    const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
+    const sunsetUnlockedStatus = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
+    setIsSunsetUnlocked(sunsetUnlockedStatus);
+
     if (storedTheme) {
-      setTheme(storedTheme);
-      if (storedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
+      if (storedTheme === 'sunset-glow' && !sunsetUnlockedStatus) {
+        setTheme('light'); // Default to light if sunset not unlocked
+        localStorage.setItem(THEME_KEY, 'light');
       } else {
-        document.documentElement.classList.remove('dark');
+        setTheme(storedTheme);
       }
     } else {
-       // Respect OS preference if no theme is stored
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         setTheme('dark');
-        document.documentElement.classList.add('dark');
       } else {
         setTheme('light');
-        document.documentElement.classList.remove('dark');
       }
     }
   }, []);
 
   React.useEffect(() => {
+    if (!mounted) return;
+
+    document.documentElement.classList.remove('dark', 'sunset-glow');
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    } else if (theme === 'sunset-glow') {
+      if (isSunsetUnlocked) {
+        document.documentElement.classList.add('sunset-glow');
+      } else {
+        // Fallback if somehow selected but not unlocked
+        setTheme('light'); 
+        document.documentElement.classList.remove('dark', 'sunset-glow');
+        localStorage.setItem(THEME_KEY, 'light');
+        return;
+      }
     }
-  }, [theme]);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme, isSunsetUnlocked, mounted]);
+  
+  // Effect to listen for theme unlock from ThemeUnlockCard
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      const sunsetUnlockedStatus = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
+      if (sunsetUnlockedStatus !== isSunsetUnlocked) {
+        setIsSunsetUnlocked(sunsetUnlockedStatus);
+      }
+    };
 
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+    window.addEventListener('storage', handleStorageChange);
+    // Also check on mount in case ThemeUnlockCard updates localStorage before this component mounts fully
+    handleStorageChange(); 
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [isSunsetUnlocked]);
+
+
+  const handleThemeChange = (newTheme: Theme) => {
+    if (newTheme === 'sunset-glow' && !isSunsetUnlocked) {
+       toast({
+        title: "Theme Locked",
+        description: "Unlock the 'Sunset Glow' theme from the Analytics page.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTheme(newTheme);
   };
 
+  if (!mounted) {
+    // Return a basic layout or null during server render / pre-hydration
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <Flame className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider defaultOpen>
@@ -105,19 +162,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
            <SidebarTrigger className="md:hidden" /> {/* Mobile toggle */}
-           <div className="flex items-center gap-4 ml-auto"> {/* Increased gap */}
+           <div className="flex items-center gap-4 ml-auto">
             <div className="flex items-center gap-2">
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <Label htmlFor="theme-switch" className="sr-only">
-                Toggle theme
-              </Label>
-              <Switch
-                id="theme-switch"
-                checked={theme === 'dark'}
-                onCheckedChange={toggleTheme}
-                aria-label="Toggle theme"
-              />
+              <Palette className="h-5 w-5 text-muted-foreground" />
+              <Select value={theme} onValueChange={(value) => handleThemeChange(value as Theme)}>
+                <SelectTrigger className="w-[130px] h-9 text-xs">
+                  <SelectValue placeholder="Select theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4" /> Light
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark">
+                     <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4" /> Dark
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="sunset-glow" disabled={!isSunsetUnlocked}>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" /> Sunset Glow
+                      {!isSunsetUnlocked && <span className="text-xs text-muted-foreground/70">(Locked)</span>}
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Avatar className="h-8 w-8">
               <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person avatar" />
