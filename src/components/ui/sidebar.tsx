@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -364,6 +365,22 @@ const SidebarHeader = React.forwardRef<
   )
 })
 SidebarHeader.displayName = "SidebarHeader"
+
+const SidebarTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h2
+    ref={ref}
+    data-sidebar="title"
+    className={cn(
+      "text-xl font-semibold text-sidebar-foreground",
+      className
+    )}
+    {...props}
+  />
+));
+SidebarTitle.displayName = "SidebarTitle";
 
 const SidebarFooter = React.forwardRef<
   HTMLDivElement,
@@ -758,6 +775,7 @@ export {
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
+  SidebarTitle,
   SidebarTrigger,
   useSidebar,
 }
