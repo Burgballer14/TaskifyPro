@@ -1,6 +1,6 @@
 
 import type { Achievement } from '@/types';
-import { Award, Palette, Flame, Trophy, Zap, Star, PawPrint } from 'lucide-react';
+import { Award, Palette, Flame, Trophy, Star, PawPrint } from 'lucide-react'; // Added Star
 
 export const ACHIEVEMENTS_LIST: Achievement[] = [
   {
@@ -9,6 +9,7 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
     description: 'Complete your very first task.',
     icon: Award,
     category: 'tasks',
+    rewardPoints: 50,
   },
   {
     id: 'style_starter',
@@ -16,27 +17,31 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
     description: 'Unlock your first theme from the store.',
     icon: Palette,
     category: 'store',
+    rewardPoints: 100,
   },
   {
     id: 'pet_pal',
     title: 'Furry Friend',
     description: 'Unlock your first pet companion.',
-    icon: PawPrint, // Changed to PawPrint for pet-specific
+    icon: PawPrint,
     category: 'store',
+    rewardPoints: 100,
   },
   {
     id: 'streak_beginner',
     title: 'Consistent Starter',
     description: 'Achieve a 3-day login streak.',
-    icon: Flame, // Using Flame for streak consistency
+    icon: Flame,
     category: 'streak',
+    rewardPoints: 75,
   },
   {
     id: 'point_collector',
     title: 'Point Hoarder',
-    description: 'Earn 1000 points in a single week.',
+    description: 'Earn 1000 points (from on-time tasks) in a single week.',
     icon: Star,
     category: 'general',
+    rewardPoints: 250,
   },
   {
     id: 'task_master_novice',
@@ -44,7 +49,11 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
     description: 'Complete 10 tasks.',
     icon: Trophy,
     category: 'tasks',
+    rewardPoints: 100,
   },
 ];
 
 export const ACHIEVEMENTS_STORAGE_KEY = 'taskifyProAchievements';
+export const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance'; // Added for consistency
+export const INITIAL_USER_POINTS = 500; // Added for consistency
+

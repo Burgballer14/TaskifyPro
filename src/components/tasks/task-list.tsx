@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { NewTaskForm, type TaskFormData } from './new-task-form';
 import { PlusCircle, Search, Pencil } from 'lucide-react';
-import { ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data'; // Import achievement constants
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
+import { useToast } from '@/hooks/use-toast';
 
 type SortKey = 'dueDate' | 'priority' | 'status' | 'title';
 type SortOrder = 'asc' | 'desc';
@@ -44,7 +44,7 @@ export function TaskList() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
@@ -118,14 +118,25 @@ export function TaskList() {
   const unlockAchievement = (achievementId: string, achievementTitle: string) => {
     const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    
     if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
       achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
       localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
-      // Dispatch a storage event so other components (like AchievementsPage) can react if they are open
       window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+
+      const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+      let pointsAwardedMessage = "";
+      if (achievement && achievement.rewardPoints && achievement.rewardPoints > 0) {
+        const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
+        const newTotalPoints = currentPoints + achievement.rewardPoints;
+        localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
+        pointsAwardedMessage = ` (+${achievement.rewardPoints} Points!)`;
+      }
+
       toast({
         title: "🏆 Achievement Unlocked!",
-        description: achievementTitle,
+        description: `${achievementTitle}${pointsAwardedMessage}`,
         variant: "default",
       });
     }
@@ -167,15 +178,22 @@ export function TaskList() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId
-          ? { ...task, status: 'completed', completedAt: new Date() }
-          : task
-      )
+    let firstTimeCompletingAnyTask = !tasks.some(task => task.status === 'completed');
+    let updatedTasks = tasks.map(task =>
+      task.id === taskId
+        ? { ...task, status: 'completed', completedAt: new Date() }
+        : task
     );
-    // Check for "First Task Completed" achievement
-    unlockAchievement('first_task_completed', 'First Step Taken');
+    setTasks(updatedTasks);
+
+    if (firstTimeCompletingAnyTask && updatedTasks.find(t => t.id === taskId)?.status === 'completed') {
+      unlockAchievement('first_task_completed', 'First Step Taken');
+    }
+
+    const completedTasksCount = updatedTasks.filter(task => task.status === 'completed').length;
+    if (completedTasksCount >= 10) {
+      unlockAchievement('task_master_novice', 'Task Slayer');
+    }
   };
   
   if (!isMounted) {

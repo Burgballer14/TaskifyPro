@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Paintbrush, Sparkles, CheckCircle2, Dog, PawPrint, Wallet } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { ACHIEVEMENTS_STORAGE_KEY } from '@/lib/achievements-data'; // Import achievement constants
+import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
+import type { Achievement } from '@/types';
+
 
 const SUNSET_THEME_KEY = 'taskifyProSunsetThemeUnlocked';
 const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
-const USER_POINTS_BALANCE_KEY = 'taskifyProUserPointsBalance';
 
-const INITIAL_USER_POINTS = 500; 
 const SUNSET_THEME_COST = 500; 
 const DOGGO_PET_COST = 500;    
 
@@ -52,13 +52,26 @@ export function ThemeUnlockCard() {
   const unlockAchievement = (achievementId: string, achievementTitle: string) => {
     const storedAchievements = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let achievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+    
     if (!achievements[achievementId] || !achievements[achievementId].unlocked) {
       achievements[achievementId] = { unlocked: true, unlockDate: new Date().toISOString() };
       localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements));
       window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(achievements) }));
+
+      const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+      let pointsAwardedMessage = "";
+      if (achievement && achievement.rewardPoints && achievement.rewardPoints > 0) {
+        const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || '0', 10);
+        const newTotalPoints = currentPoints + achievement.rewardPoints;
+        localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
+        setUserPoints(newTotalPoints); // Update local state for immediate reflection
+        window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
+        pointsAwardedMessage = ` (+${achievement.rewardPoints} Points!)`;
+      }
+
       toast({
         title: "🏆 Achievement Unlocked!",
-        description: achievementTitle,
+        description: `${achievementTitle}${pointsAwardedMessage}`,
         variant: "default",
       });
     }

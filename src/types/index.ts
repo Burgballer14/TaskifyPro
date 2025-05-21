@@ -20,6 +20,8 @@ export interface Achievement {
   description: string;
   icon: LucideIcon;
   category: 'general' | 'tasks' | 'store' | 'streak';
+  rewardPoints?: number; // Added for point rewards
   // criteria: () => boolean; // For tracking, to be added later
   // unlockDate?: Date; // To be added later
 }
+

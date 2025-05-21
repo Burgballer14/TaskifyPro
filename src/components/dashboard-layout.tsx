@@ -10,17 +10,17 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
-  SidebarTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar" // Removed SidebarTitle as it's part of SidebarHeader now
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Button } from "@/components/ui/button"
-import { LogOut, Settings, Flame, Sun, Moon, Palette, Sparkles, Dog, PawPrint } from "lucide-react"
+import { LogOut, Settings, Flame, Sun, Moon, Palette, Sparkles, Dog, PawPrint, Wallet } from "lucide-react" // Added Wallet
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useDailyStreak } from "@/hooks/useDailyStreak";
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS } from "@/lib/achievements-data"; // Import constants
 
 const THEME_KEY = 'taskifyProTheme';
 const SUNSET_THEME_UNLOCKED_KEY = 'taskifyProSunsetThemeUnlocked';
@@ -37,6 +37,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSunsetUnlocked, setIsSunsetUnlocked] = React.useState(false);
   const [isDoggoUnlocked, setIsDoggoUnlocked] = React.useState(false);
   const [selectedPet, setSelectedPet] = React.useState<Pet>(null);
+  const [userPoints, setUserPoints] = React.useState<number>(INITIAL_USER_POINTS); // State for user points
   const [mounted, setMounted] = React.useState(false);
   const { toast } = useToast();
 
@@ -55,12 +56,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (doggoUnlockedStatus && storedSelectedPet) {
       setSelectedPet(storedSelectedPet);
     } else if (doggoUnlockedStatus && !storedSelectedPet) {
-      setSelectedPet('doggo'); // Default to doggo if unlocked but none selected
+      setSelectedPet('doggo'); 
       localStorage.setItem(SELECTED_PET_KEY, 'doggo');
     } else {
       setSelectedPet(null);
     }
-
 
     if (storedTheme) {
       if (storedTheme === 'sunset-glow' && !sunsetUnlockedStatus) {
@@ -76,6 +76,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         setTheme('light');
       }
     }
+
+    // Load user points
+    const storedUserPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
+    if (storedUserPoints !== null) {
+      setUserPoints(parseInt(storedUserPoints, 10));
+    } else {
+      localStorage.setItem(USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS.toString());
+      setUserPoints(INITIAL_USER_POINTS);
+    }
+
   }, []);
 
   React.useEffect(() => {
@@ -110,10 +120,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       if (event.key === SELECTED_PET_KEY) {
         setSelectedPet(event.newValue as Pet | null);
       }
+      if (event.key === USER_POINTS_BALANCE_KEY && event.newValue !== null) {
+        setUserPoints(parseInt(event.newValue, 10));
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Check on mount to ensure consistency if changed in another tab
+    
     const initialSunsetUnlocked = localStorage.getItem(SUNSET_THEME_UNLOCKED_KEY) === 'true';
     if (initialSunsetUnlocked !== isSunsetUnlocked) setIsSunsetUnlocked(initialSunsetUnlocked);
     
@@ -123,11 +136,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const initialSelectedPet = localStorage.getItem(SELECTED_PET_KEY) as Pet | null;
     if (initialSelectedPet !== selectedPet) setSelectedPet(initialSelectedPet);
 
+    const initialUserPoints = localStorage.getItem(USER_POINTS_BALANCE_KEY);
+    if (initialUserPoints !== null && parseInt(initialUserPoints, 10) !== userPoints) {
+      setUserPoints(parseInt(initialUserPoints, 10));
+    }
+
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isSunsetUnlocked, isDoggoUnlocked, selectedPet]); // Dependencies to re-check if state changes internally
+  }, [isSunsetUnlocked, isDoggoUnlocked, selectedPet, userPoints]); 
 
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -145,7 +163,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
-        {/* Consistent loading spinner, e.g., Flame or Loader2 */}
         <Flame className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -164,7 +181,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <path d="M6.75 16C6.33579 16 6 16.3358 6 16.75C6 17.1642 6.33579 17.5 6.75 17.5H13.25C13.6642 17.5 14 17.1642 14 16.75C14 16.3358 13.6642 16 13.25 16H6.75Z" fill="currentColor"/>
                 <path fillRule="evenodd" clipRule="evenodd" d="M3 4.75C3 3.09315 4.34315 1.75 6 1.75H18C19.6569 1.75 21 3.09315 21 4.75V19.25C21 20.9069 19.6569 22.25 18 22.25H6C4.34315 22.25 3 20.9069 3 19.25V4.75ZM6 3.25C5.17157 3.25 4.5 3.92157 4.5 4.75V19.25C4.5 20.0784 5.17157 20.75 6 20.75H18C18.8284 20.75 19.5 20.0784 19.5 19.25V4.75C19.5 3.92157 18.8284 3.25 18 3.25H6Z" fill="currentColor"/>
              </svg>
-            <SidebarTitle className="text-xl font-semibold">Taskify Pro</SidebarTitle>
+            {/* SidebarTitle is typically part of SidebarHeader or a direct child */}
+            <h2 className="text-xl font-semibold text-sidebar-foreground">Taskify Pro</h2>
           </div>
         </SidebarHeader>
         <SidebarContent className="p-4">
@@ -196,6 +214,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
            <SidebarTrigger className="md:hidden" /> {/* Mobile toggle */}
            <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-2 text-sm font-medium text-primary mr-2">
+              <Wallet className="h-5 w-5"/>
+              <span>{userPoints} Points</span>
+            </div>
             <div className="flex items-center gap-2">
               <Palette className="h-5 w-5 text-muted-foreground" />
               <Select value={theme} onValueChange={(value) => handleThemeChange(value as Theme)}>
