@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { isSameDay, subDays, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ACHIEVEMENTS_STORAGE_KEY, USER_POINTS_BALANCE_KEY, ACHIEVEMENTS_LIST, INITIAL_USER_POINTS } from '@/lib/achievements-data';
-import type { UnlockedAchievements, UserAchievementStatus } from '@/types';
+import type { UnlockedAchievements, UserAchievementStatus, Achievement } from '@/types';
 
 const LAST_LOGIN_KEY = 'taskifyProLastLogin';
 const STREAK_COUNT_KEY = 'taskifyProStreakCount';
@@ -15,41 +15,51 @@ export function useDailyStreak() {
   const [isLoadingStreak, setIsLoadingStreak] = useState(true);
   const { toast } = useToast();
 
-  const unlockAchievement = (achievementId: string) => {
+  const unlockAchievement = (achievementId: string, achievementTitle: string, pointsToAward: number, stageNumber?: number, stageTitleSuffix?: string) => {
     if (typeof window === 'undefined') return;
     const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
     
-    const achievementToUnlock = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
-    if (!achievementToUnlock) return;
+    const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    if (!achievement) return;
 
     const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
-    let newUnlock = false;
+    let newStageUnlocked = false;
 
-    // Simplified for single-stage achievements from streak hook
-    if (!currentStatus.unlocked) {
+    if (achievement.stages && stageNumber !== undefined) { 
+      if (!currentStatus.currentStage || currentStatus.currentStage < stageNumber) {
+        currentStatus.currentStage = stageNumber;
+        if (!currentStatus.stageUnlockDates) currentStatus.stageUnlockDates = {};
+        currentStatus.stageUnlockDates[stageNumber] = new Date().toISOString();
+        currentStatus.unlockDate = new Date().toISOString(); 
+        newStageUnlocked = true;
+      }
+    } else if (!achievement.stages) { // Single-stage achievement
+      if (!currentStatus.unlocked) {
         currentStatus.unlocked = true;
         currentStatus.unlockDate = new Date().toISOString();
-        newUnlock = true;
+        newStageUnlocked = true;
+      }
     }
     
-    if (newUnlock) {
+    if (newStageUnlocked) {
       userAchievements[achievementId] = currentStatus;
       localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(userAchievements));
       window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(userAchievements) }));
 
       let pointsAwardedMessage = "";
-      if (achievementToUnlock.rewardPoints && achievementToUnlock.rewardPoints > 0) {
+      if (pointsToAward > 0) {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
-        const newTotalPoints = currentPoints + achievementToUnlock.rewardPoints;
+        const newTotalPoints = currentPoints + pointsToAward;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
-        pointsAwardedMessage = ` (+${achievementToUnlock.rewardPoints} Points!)`;
+        pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
       }
 
+      const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
       toast({
-        title: "🏆 Achievement Unlocked!",
-        description: `${achievementToUnlock.title}${pointsAwardedMessage}`,
+        title: `🏆 Achievement ${achievement.stages ? 'Stage ' : ''}Unlocked!`,
+        description: `${toastTitle}${pointsAwardedMessage}`,
         variant: "default",
       });
     }
@@ -82,12 +92,23 @@ export function useDailyStreak() {
       localStorage.setItem(STREAK_COUNT_KEY, updatedStreak.toString());
       setStreak(updatedStreak);
 
-      if (updatedStreak >= 3) { // Assuming 3-day streak for "Consistent Starter"
-        unlockAchievement('streak_beginner');
+      // Check for "Consistent Starter" achievement stages
+      const streakAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'streak_beginner');
+      if (streakAchievement && streakAchievement.stages) {
+        const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+        let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
+        const streakStatus: UserAchievementStatus = userAchievements[streakAchievement.id] || { currentStage: 0 };
+
+        for (const stage of streakAchievement.stages) {
+          if ((!streakStatus.currentStage || streakStatus.currentStage < stage.stage) && updatedStreak >= stage.criteriaCount) {
+            unlockAchievement(streakAchievement.id, streakAchievement.title, stage.rewardPoints, stage.stage, stage.titleSuffix);
+          }
+        }
       }
     }
     setIsLoadingStreak(false);
-  }, []); 
+  }, [toast]); // Added toast to dependency array as it's used in unlockAchievement
 
   return { streak, isLoadingStreak };
 }
+

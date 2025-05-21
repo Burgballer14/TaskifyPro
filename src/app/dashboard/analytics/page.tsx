@@ -31,26 +31,34 @@ export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const { toast } = useToast();
 
-  // Simplified unlockAchievement for this page, point awarding is handled by individual unlock flows
-  const unlockAchievement = (achievementId: string, achievementTitle: string, pointsToAward: number) => {
+  const unlockAchievement = (achievementId: string, achievementTitle: string, pointsToAward: number, stageNumber?: number, stageTitleSuffix?: string) => {
     if (typeof window === 'undefined') return;
     const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
     
-    const achievementToUnlock = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
-    if (!achievementToUnlock) return;
+    const achievement = ACHIEVEMENTS_LIST.find(a => a.id === achievementId);
+    if (!achievement) return;
 
     const currentStatus: UserAchievementStatus = userAchievements[achievementId] || {};
-    let newUnlock = false;
+    let newStageUnlocked = false;
 
-    // Only for single-stage achievements like "Point Collector"
-    if (!achievementToUnlock.stages && !currentStatus.unlocked) {
+    if (achievement.stages && stageNumber !== undefined) { 
+      if (!currentStatus.currentStage || currentStatus.currentStage < stageNumber) {
+        currentStatus.currentStage = stageNumber;
+        if (!currentStatus.stageUnlockDates) currentStatus.stageUnlockDates = {};
+        currentStatus.stageUnlockDates[stageNumber] = new Date().toISOString();
+        currentStatus.unlockDate = new Date().toISOString(); 
+        newStageUnlocked = true;
+      }
+    } else if (!achievement.stages) { // Single-stage achievement
+      if (!currentStatus.unlocked) {
         currentStatus.unlocked = true;
         currentStatus.unlockDate = new Date().toISOString();
-        newUnlock = true;
+        newStageUnlocked = true;
+      }
     }
     
-    if (newUnlock) {
+    if (newStageUnlocked) {
       userAchievements[achievementId] = currentStatus;
       localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(userAchievements));
       window.dispatchEvent(new StorageEvent('storage', { key: ACHIEVEMENTS_STORAGE_KEY, newValue: JSON.stringify(userAchievements) }));
@@ -60,14 +68,14 @@ export default function AnalyticsPage() {
         const currentPoints = parseInt(localStorage.getItem(USER_POINTS_BALANCE_KEY) || INITIAL_USER_POINTS.toString(), 10);
         const newTotalPoints = currentPoints + pointsToAward;
         localStorage.setItem(USER_POINTS_BALANCE_KEY, newTotalPoints.toString());
-        // setUserPoints state would be needed if this page displayed total points directly
         window.dispatchEvent(new StorageEvent('storage', { key: USER_POINTS_BALANCE_KEY, newValue: newTotalPoints.toString() }));
         pointsAwardedMessage = ` (+${pointsToAward} Points!)`;
       }
 
+      const toastTitle = achievement.stages && stageTitleSuffix ? `${achievementTitle} ${stageTitleSuffix}` : achievementTitle;
       toast({
-        title: "🏆 Achievement Unlocked!",
-        description: `${achievementTitle}${pointsAwardedMessage}`,
+        title: `🏆 Achievement ${achievement.stages ? 'Stage ' : ''}Unlocked!`,
+        description: `${toastTitle}${pointsAwardedMessage}`,
         variant: "default",
       });
     }
@@ -80,8 +88,8 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !tasks.length) { // Ensure tasks are loaded before processing
-      if (!isLoading && !tasks.length) { // Handle case with no tasks
+    if (isLoading || !tasks.length) { 
+      if (!isLoading && !tasks.length) { 
         setAnalyticsData({
           userName: "User",
           dailyScore: 0,
@@ -151,9 +159,18 @@ export default function AnalyticsPage() {
     });
 
     const pointCollectorAchievement = ACHIEVEMENTS_LIST.find(a => a.id === 'point_collector');
-    if (pointCollectorAchievement && pointsThisWeek >= 1000) { // Assuming 1000 points is the criteria for Point Collector
-        unlockAchievement('point_collector', pointCollectorAchievement.title, pointCollectorAchievement.rewardPoints || 0);
+    if (pointCollectorAchievement && pointCollectorAchievement.stages) {
+      const storedAchievementsRaw = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+      let userAchievements: UnlockedAchievements = storedAchievementsRaw ? JSON.parse(storedAchievementsRaw) : {};
+      const pointCollectorStatus: UserAchievementStatus = userAchievements[pointCollectorAchievement.id] || { currentStage: 0 };
+
+      for (const stage of pointCollectorAchievement.stages) {
+        if ((!pointCollectorStatus.currentStage || pointCollectorStatus.currentStage < stage.stage) && pointsThisWeek >= stage.criteriaCount) {
+          unlockAchievement(pointCollectorAchievement.id, pointCollectorAchievement.title, stage.rewardPoints, stage.stage, stage.titleSuffix);
+        }
+      }
     }
+
 
     const summaryInput: DailySummaryInput = {
       userName,
@@ -171,7 +188,7 @@ export default function AnalyticsPage() {
         });
       });
 
-  }, [tasks, isLoading]); 
+  }, [tasks, isLoading, toast]); 
 
   if (isLoading || !analyticsData) {
     return (
@@ -210,3 +227,4 @@ export default function AnalyticsPage() {
     </>
   );
 }
+
