@@ -3,8 +3,8 @@
 
 import type { Task } from '@/types';
 import { TaskCard } from './task-card';
-import { useState, useMemo } from 'react';
-import { DUMMY_TASKS } from '@/lib/constants';
+import { useState, useMemo, useEffect } from 'react';
+import { loadTasksFromLocalStorage, saveTasksToLocalStorage } from '@/lib/task-storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,23 @@ const assignPoints = (priority: Task['priority']): number => {
 };
 
 export function TaskList() {
-  const [tasks, setTasks] = useState<Task[]>(DUMMY_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('dueDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setTasks(loadTasksFromLocalStorage());
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      saveTasksToLocalStorage(tasks);
+    }
+  }, [tasks, isMounted]);
 
   const priorityOrder: Record<Task['priority'], number> = { high: 0, medium: 1, low: 2 };
   const statusOrder: Record<Task['status'], number> = { todo: 0, inProgress: 1, completed: 2 };
@@ -62,8 +74,8 @@ export function TaskList() {
         valA = statusOrder[a.status];
         valB = statusOrder[b.status];
       } else if (sortKey === 'dueDate') {
-        valA = a.dueDate.getTime();
-        valB = b.dueDate.getTime();
+        valA = new Date(a.dueDate).getTime(); // Ensure comparison on actual Date objects
+        valB = new Date(b.dueDate).getTime();
       } else { // title
         valA = a.title.toLowerCase();
         valB = b.title.toLowerCase();
@@ -106,6 +118,15 @@ export function TaskList() {
       )
     );
   };
+  
+  if (!isMounted) {
+     // You can return a loading spinner or null here
+    return (
+      <div className="flex h-[calc(100vh-theme(spacing.48))] w-full items-center justify-center p-6">
+        <PlusCircle className="h-12 w-12 animate-spin text-primary" /> {/* Example Loader */}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -168,4 +189,3 @@ export function TaskList() {
     </div>
   );
 }
-
