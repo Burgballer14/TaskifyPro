@@ -16,7 +16,8 @@ function isDateToday(date: Date | undefined): boolean {
   return isSameDay(date, startOfToday());
 }
 
-const WEEKLY_POINT_GOAL = 150; // Hardcoded weekly goal
+const WEEKLY_POINT_GOAL = 150; // Hardcoded weekly goal, also acts as weekly cap
+const DAILY_POINT_CAP = 50;   // New daily point cap
 
 export default function AnalyticsPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -43,12 +44,13 @@ export default function AnalyticsPage() {
       (task) => task.status === 'completed' && isDateToday(task.completedAt)
     );
 
-    const dailyScore = tasksCompletedTodayList.reduce((sum, task) => {
+    const calculatedDailyScore = tasksCompletedTodayList.reduce((sum, task) => {
       const completedOnTime = task.completedAt && task.dueDate && 
                              (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
       const awardedPoints = completedOnTime ? (task.points || 0) : 0;
       return sum + awardedPoints;
     }, 0);
+    const dailyScore = Math.min(calculatedDailyScore, DAILY_POINT_CAP); // Apply daily cap
 
     const tasksOpenToday = tasks.filter(
       (task) => task.status !== 'completed' && isDateToday(task.dueDate)
@@ -64,12 +66,13 @@ export default function AnalyticsPage() {
         isWithinInterval(task.completedAt, { start: weekStart, end: weekEnd })
     );
 
-    const pointsThisWeek = tasksCompletedThisWeekList.reduce((sum, task) => {
+    const calculatedPointsThisWeek = tasksCompletedThisWeekList.reduce((sum, task) => {
       const completedOnTime = task.completedAt && task.dueDate && 
                              (isBefore(task.completedAt, endOfDay(task.dueDate)) || isSameDay(task.completedAt, task.dueDate));
       const awardedPoints = completedOnTime ? (task.points || 0) : 0;
       return sum + awardedPoints;
     }, 0);
+    const pointsThisWeek = Math.min(calculatedPointsThisWeek, WEEKLY_POINT_GOAL); // Apply weekly cap
 
     const totalActiveTasks = tasks.filter(task => task.status === 'todo' || task.status === 'inProgress').length;
     
