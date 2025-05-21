@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ListChecks, CalendarDays, BarChart3, Settings } from 'lucide-react';
+import { ListChecks, CalendarDays, BarChart3, Trophy, Settings } from 'lucide-react'; // Added Trophy
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { id: 'tasks', href: '/dashboard/tasks', label: 'Tasks', icon: ListChecks },
   { id: 'calendar', href: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'analytics', href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'achievements', href: '/dashboard/achievements', label: 'Achievements', icon: Trophy }, // New Item
   // Example: { id: 'settings', href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
