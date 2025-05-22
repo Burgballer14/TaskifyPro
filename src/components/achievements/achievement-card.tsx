@@ -20,6 +20,7 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0, 
   
   let currentStageNumber = 0;
   let nextStage: AchievementStage | undefined = undefined;
+  let currentStageData: AchievementStage | undefined = undefined; // Declare here
   let displayTitle = achievement.title;
   let displayDescription = achievement.description;
   let progressValue = 0;
@@ -31,7 +32,7 @@ export function AchievementCard({ achievement, status, completedTasksCount = 0, 
   if (isMultiStage) {
     currentStageNumber = status.currentStage || 0;
     isUnlockedOverall = currentStageNumber > 0;
-    const currentStageData = achievement.stages!.find(s => s.stage === currentStageNumber);
+    currentStageData = achievement.stages!.find(s => s.stage === currentStageNumber); // Assign here
     
     if (currentStageNumber > 0 && currentStageData) {
       displayTitle = `${achievement.title} ${currentStageData.titleSuffix}`;
