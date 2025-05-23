@@ -116,16 +116,20 @@ export function TutorialOverlay({
       {/* Tutorial card */}
       <div
         className={cn(
-          "fixed z-50 w-80 max-w-[90vw]",
+          "fixed z-50 w-80 max-w-[90vw] max-h-[80vh] overflow-y-auto",
+          // On mobile, always center the tutorial card
+          "md:block",
           currentStep.position === 'center' && "transform -translate-x-1/2 -translate-y-1/2",
-          currentStep.position === 'top' && "transform -translate-x-1/2 -translate-y-full",
-          currentStep.position === 'bottom' && "transform -translate-x-1/2",
-          currentStep.position === 'left' && "transform -translate-x-full -translate-y-1/2",
-          currentStep.position === 'right' && "transform -translate-y-1/2"
+          currentStep.position === 'top' && "md:transform md:-translate-x-1/2 md:-translate-y-full",
+          currentStep.position === 'bottom' && "md:transform md:-translate-x-1/2",
+          currentStep.position === 'left' && "md:transform md:-translate-x-full md:-translate-y-1/2",
+          currentStep.position === 'right' && "md:transform md:-translate-y-1/2",
+          // Mobile positioning - always centered
+          "md:static md:transform-none left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 md:left-auto md:top-auto"
         )}
         style={{
-          top: overlayPosition.top,
-          left: overlayPosition.left,
+          top: window.innerWidth >= 768 ? overlayPosition.top : '50%',
+          left: window.innerWidth >= 768 ? overlayPosition.left : '50%',
         }}
       >
         <Card className="shadow-xl border-primary/20">

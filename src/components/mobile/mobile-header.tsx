@@ -1,19 +1,70 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Wallet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Wallet, Palette, Sun, Moon, Sparkles } from 'lucide-react';
+import { getDefaultAvatar } from '@/components/ui/avatar-selector';
+
+const USER_NAME_KEY = 'taskifyProUserName';
+const USER_AVATAR_KEY = 'taskifyProUserAvatar';
 
 interface MobileHeaderProps {
   userPoints: number;
   userName?: string;
+  theme?: 'light' | 'dark' | 'sunset-glow';
+  onThemeChange?: (theme: 'light' | 'dark' | 'sunset-glow') => void;
+  isSunsetUnlocked?: boolean;
 }
 
 /**
- * Minimal mobile header component
- * Shows only essential information: points and user avatar
+ * Mobile header component with theme switcher
+ * Shows points, user avatar, and theme selector
  */
-export function MobileHeader({ userPoints, userName = "User Name" }: MobileHeaderProps) {
+export function MobileHeader({ 
+  userPoints, 
+  userName: propUserName = "User Name",
+  theme = 'light',
+  onThemeChange,
+  isSunsetUnlocked = false
+}: MobileHeaderProps) {
+  const [userAvatar, setUserAvatar] = useState(getDefaultAvatar());
+  const [userName, setUserName] = useState(propUserName);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined') {
+      // Load user data from localStorage
+      const storedUserName = localStorage.getItem(USER_NAME_KEY);
+      if (storedUserName) {
+        setUserName(storedUserName);
+      }
+
+      const storedUserAvatar = localStorage.getItem(USER_AVATAR_KEY);
+      if (storedUserAvatar) {
+        setUserAvatar(storedUserAvatar);
+      }
+
+      // Listen for storage changes to update avatar in real-time
+      const handleStorageChange = (event: StorageEvent) => {
+        if (event.key === USER_AVATAR_KEY && event.newValue) {
+          setUserAvatar(event.newValue);
+        }
+        if (event.key === USER_NAME_KEY && event.newValue) {
+          setUserName(event.newValue);
+        }
+      };
+
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
+  }, []);
+
+  // Use prop userName if provided, otherwise use stored userName
+  const displayName = propUserName !== "User Name" ? propUserName : userName;
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md md:hidden">
       {/* App logo/title */}
@@ -27,17 +78,44 @@ export function MobileHeader({ userPoints, userName = "User Name" }: MobileHeade
         <h1 className="text-lg font-semibold">Taskify Pro</h1>
       </div>
 
-      {/* Points and user info */}
-      <div className="flex items-center gap-3">
+      {/* Points, theme selector, and user info */}
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 text-sm font-medium text-primary" data-testid="points-display">
           <Wallet className="h-4 w-4"/>
           <span>{userPoints}</span>
         </div>
         
+        {/* Theme Selector */}
+        {onThemeChange && (
+          <Select value={theme} onValueChange={(value) => onThemeChange(value as 'light' | 'dark' | 'sunset-glow')}>
+            <SelectTrigger className="w-8 h-8 p-0 border-none bg-transparent hover:bg-muted">
+              <Palette className="h-4 w-4" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="light">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4" /> Light
+                </div>
+              </SelectItem>
+              <SelectItem value="dark">
+                <div className="flex items-center gap-2">
+                  <Moon className="h-4 w-4" /> Dark
+                </div>
+              </SelectItem>
+              <SelectItem value="sunset-glow" disabled={!isSunsetUnlocked}>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" /> Sunset
+                  {!isSunsetUnlocked && <span className="text-xs text-muted-foreground/70">(Locked)</span>}
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        
         <Avatar className="h-8 w-8">
-          <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" />
+          <AvatarImage src={mounted ? userAvatar : getDefaultAvatar()} alt="User Avatar" />
           <AvatarFallback>
-            {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+            {displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
           </AvatarFallback>
         </Avatar>
       </div>

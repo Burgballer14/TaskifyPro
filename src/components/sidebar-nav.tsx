@@ -1,9 +1,8 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ListChecks, CalendarDays, BarChart3, Trophy, Settings } from 'lucide-react'; // Added Trophy
+import { ListChecks, CalendarDays, Trophy, Store, User } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -21,9 +20,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'tasks', href: '/dashboard/tasks', label: 'Tasks', icon: ListChecks },
   { id: 'calendar', href: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'analytics', href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'achievements', href: '/dashboard/achievements', label: 'Achievements', icon: Trophy }, // New Item
-  // Example: { id: 'settings', href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { id: 'achievements', href: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
+  { id: 'store', href: '/dashboard/store', label: 'Store', icon: Store },
+  { id: 'profile', href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 
 interface SidebarNavProps {
@@ -37,7 +36,7 @@ export function SidebarNav({ hasNewStoreItems }: SidebarNavProps) {
     <SidebarMenu>
       {navItems.map((item) => {
         const isActive = pathname.startsWith(item.href);
-        const isAnalyticsAndHasNew = item.id === 'analytics' && hasNewStoreItems;
+        const isStoreAndHasNew = item.id === 'store' && hasNewStoreItems;
 
         return (
           <SidebarMenuItem key={item.href}>
@@ -56,7 +55,7 @@ export function SidebarNav({ hasNewStoreItems }: SidebarNavProps) {
                   <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
                 </div>
-                {isAnalyticsAndHasNew && (
+                {isStoreAndHasNew && (
                   <span 
                     className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" 
                     aria-label="New items in store"

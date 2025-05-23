@@ -23,11 +23,14 @@ import { USER_POINTS_BALANCE_KEY, INITIAL_USER_POINTS } from "@/lib/achievements
 import { OnboardingProvider } from "@/components/onboarding/onboarding-provider"
 import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
 import { MobileHeader } from "@/components/mobile/mobile-header"
+import { getDefaultAvatar } from "@/components/ui/avatar-selector"
 
 const THEME_KEY = 'taskifyProTheme';
 const SUNSET_THEME_UNLOCKED_KEY = 'taskifyProSunsetThemeUnlocked';
 const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
+const USER_NAME_KEY = 'taskifyProUserName';
+const USER_AVATAR_KEY = 'taskifyProUserAvatar';
 
 type Theme = 'light' | 'dark' | 'sunset-glow';
 type Pet = 'doggo' | null;
@@ -40,6 +43,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isDoggoUnlocked, setIsDoggoUnlocked] = React.useState(false);
   const [selectedPet, setSelectedPet] = React.useState<Pet>(null);
   const [userPoints, setUserPoints] = React.useState<number>(INITIAL_USER_POINTS); // State for user points
+  const [userAvatar, setUserAvatar] = React.useState(getDefaultAvatar());
+  const [userName, setUserName] = React.useState('User Name');
   const [mounted, setMounted] = React.useState(false);
   const { toast } = useToast();
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
@@ -111,6 +116,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setUserPoints(INITIAL_USER_POINTS);
     }
 
+    // Load user data
+    const storedUserName = localStorage.getItem(USER_NAME_KEY);
+    if (storedUserName) {
+      setUserName(storedUserName);
+    }
+
+    const storedUserAvatar = localStorage.getItem(USER_AVATAR_KEY);
+    if (storedUserAvatar) {
+      setUserAvatar(storedUserAvatar);
+    }
+
   }, [mounted]);
 
   React.useEffect(() => {
@@ -148,6 +164,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       if (event.key === USER_POINTS_BALANCE_KEY && event.newValue !== null) {
         setUserPoints(parseInt(event.newValue, 10));
       }
+      if (event.key === USER_AVATAR_KEY && event.newValue) {
+        setUserAvatar(event.newValue);
+      }
+      if (event.key === USER_NAME_KEY && event.newValue) {
+        setUserName(event.newValue);
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -165,7 +187,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (initialUserPoints !== null && parseInt(initialUserPoints, 10) !== userPoints) {
       setUserPoints(parseInt(initialUserPoints, 10));
     }
-
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -200,7 +221,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-screen">
         {/* Mobile Layout */}
         <div className="flex flex-col w-full md:hidden">
-          <MobileHeader userPoints={userPoints} userName="User Name" />
+          <MobileHeader 
+            userPoints={userPoints} 
+            userName={userName}
+            theme={theme}
+            onThemeChange={handleThemeChange}
+            isSunsetUnlocked={isSunsetUnlocked}
+          />
           <main className="flex-1 overflow-y-auto p-4 pb-20">
             {children}
           </main>
@@ -290,10 +317,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </Select>
                   </div>
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="person avatar"/>
-                    <AvatarFallback>TP</AvatarFallback>
+                    <AvatarImage src={userAvatar} alt="User Avatar" />
+                    <AvatarFallback>
+                      {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium">User Name</span> {/* Replace with actual user name if available */}
+                  <span className="text-sm font-medium">{userName}</span>
                 </div>
               </header>
               <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6">

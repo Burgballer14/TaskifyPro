@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { 
   CheckSquare, 
   Calendar, 
-  BarChart3, 
+  Trophy, 
   Store, 
   User,
   Badge
@@ -43,9 +43,9 @@ export function MobileBottomNav({ hasNewStoreItems = false }: MobileBottomNavPro
       icon: Calendar,
     },
     {
-      href: '/dashboard/analytics',
-      label: 'Analytics',
-      icon: BarChart3,
+      href: '/dashboard/achievements',
+      label: 'Achievements',
+      icon: Trophy,
     },
     {
       href: '/dashboard/store',
