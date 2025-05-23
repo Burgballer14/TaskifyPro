@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -59,9 +58,11 @@ export function PetCompanionDisplay() {
   return (
     <div
       className={cn(
-        "fixed bottom-6 right-6 z-50 rounded-xl shadow-2xl",
+        "fixed right-6 z-[60] rounded-xl shadow-2xl",
         "bg-card/80 backdrop-blur-md border border-border/50",
         "flex flex-col items-center text-center transform transition-all duration-300 ease-out",
+        // Responsive bottom positioning to avoid mobile nav overlap
+        "bottom-24 md:bottom-6", // Higher on mobile (96px from bottom), normal on desktop (24px)
         isExpanded ? "w-48 p-4" : "w-auto p-2.5", // Adjusted padding for collapsed
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
       )}
