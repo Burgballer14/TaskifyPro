@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Dog, Home } from 'lucide-react'; // Added Home icon
+import { Dog, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useReducedMotion, getAnimationClasses } from '@/hooks/useReducedMotion';
 
 const DOGGO_PET_UNLOCKED_KEY = 'taskifyProDoggoPetUnlocked';
 const SELECTED_PET_KEY = 'taskifyProSelectedPet';
@@ -14,7 +15,8 @@ export function PetCompanionDisplay() {
   const [isDoggoUnlocked, setIsDoggoUnlocked] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true); // New state for collapse/expand
+  const [isExpanded, setIsExpanded] = useState(true);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const updatePetStatus = () => {
@@ -73,7 +75,17 @@ export function PetCompanionDisplay() {
           aria-label="Collapse Doggo companion"
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleExpansion(); }}
         >
-          <Dog className="h-20 w-20 text-primary mb-2 animate-bounce [animation-duration:2s]" />
+          <Dog 
+            className={cn(
+              "h-20 w-20 text-primary mb-2",
+              getAnimationClasses(
+                "animate-bounce [animation-duration:2s]", 
+                "transform-none", 
+                prefersReducedMotion
+              )
+            )} 
+            aria-label="Doggo pet companion"
+          />
           <p className="text-sm font-semibold text-foreground">Doggo is cheering you on!</p>
           <p className="text-xs text-muted-foreground mt-1">Keep up the great work!</p>
         </div>

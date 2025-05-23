@@ -8,6 +8,8 @@ import { loadTasksFromLocalStorage, saveTasksToLocalStorage } from '@/lib/task-s
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonGrid, TaskCardSkeleton } from '@/components/ui/skeleton-card';
 import {
   Dialog,
   DialogContent,
@@ -69,35 +71,46 @@ export function TaskList() {
   const statusOrder: Record<Task['status'], number> = { todo: 0, inProgress: 1, completed: 2 };
 
   const filteredAndSortedTasks = useMemo(() => {
-    let filtered = tasks.filter(task =>
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (task.category && task.category.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // First, memoize the filtering operation
+    const filtered = tasks.filter(task => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return (
+        task.title.toLowerCase().includes(searchTermLower) ||
+        (task.description && task.description.toLowerCase().includes(searchTermLower)) ||
+        (task.category && task.category.toLowerCase().includes(searchTermLower))
+      );
+    });
 
+    // Then, memoize the sorting operation
     return filtered.sort((a, b) => {
       let valA: any;
       let valB: any;
 
-      if (sortKey === 'priority') {
-        valA = priorityOrder[a.priority];
-        valB = priorityOrder[b.priority];
-      } else if (sortKey === 'status') {
-        valA = statusOrder[a.status];
-        valB = statusOrder[b.status];
-      } else if (sortKey === 'dueDate') {
-        valA = new Date(a.dueDate).getTime();
-        valB = new Date(b.dueDate).getTime();
-      } else {
-        valA = a.title.toLowerCase();
-        valB = b.title.toLowerCase();
+      // Optimize property access based on sort key
+      switch (sortKey) {
+        case 'priority':
+          valA = priorityOrder[a.priority];
+          valB = priorityOrder[b.priority];
+          break;
+        case 'status':
+          valA = statusOrder[a.status];
+          valB = statusOrder[b.status];
+          break;
+        case 'dueDate':
+          // Cache the timestamp calculations
+          valA = new Date(a.dueDate).getTime();
+          valB = new Date(b.dueDate).getTime();
+          break;
+        default: // 'title'
+          valA = a.title.toLowerCase();
+          valB = b.title.toLowerCase();
       }
 
-      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      // Optimize comparison logic
+      const compareResult = valA < valB ? -1 : valA > valB ? 1 : 0;
+      return sortOrder === 'asc' ? compareResult : -compareResult;
     });
-  }, [tasks, searchTerm, sortKey, sortOrder]);
+  }, [tasks, searchTerm, sortKey, sortOrder, priorityOrder, statusOrder]);
 
   const handleSortChange = (value: string) => {
     const [key, order] = value.split('-') as [SortKey, SortOrder];
@@ -328,8 +341,16 @@ export function TaskList() {
 
   if (!isMounted) {
     return (
-      <div className="flex h-[calc(100vh-theme(spacing.48))] w-full items-center justify-center p-6">
-        <Search className="h-12 w-12 animate-spin text-primary" />
+      <div className="space-y-6 pb-24">
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="relative flex-grow w-full sm:w-auto">
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <Skeleton className="h-10 w-full sm:w-[200px]" />
+          <Skeleton className="h-10 w-full sm:w-[150px]" />
+        </div>
+        
+        <SkeletonGrid count={6} SkeletonComponent={TaskCardSkeleton} />
       </div>
     );
   }
